@@ -1,0 +1,227 @@
+---
+title: "Rarefaction curves, estimates, and asymptotes"
+author: Dani Wiley
+date:   last-modified
+editor: visual
+description: |
+  Creates dataframe and calculates rarefaction curve, aspymtote (number of estimated parasite lineages), and estimated sampling effort needed to fully sample parasite communities for each of Vireo species. Contact dlfwiley@gmail.com with any questions or requests for more data.
+format:
+  html:
+    theme:            litera
+    highlight-style:  atom-one
+    page-layout:      full      # article, full   # https://quarto.org/docs/output-formats/page-layout.html
+    toc: true        # Enable the table of contents
+    toc-title: "Contents"  # Optional: Set a custom title for the TOC
+    toc-depth: 1     # Optional: Specify the heading levels to include
+    toc-location: body # Optional: Show the TOC on the left (other options are "right" or "float")
+    number-sections:  false
+    self-contained:         false     # !!! this can cause a render error
+    code-overflow:          scroll    # scroll, wrap
+    code-block-bg:          true
+    code-block-border-left: "#30B0E0"
+    code-copy:              false     # true, false, hover a copy buttom in top-right of code block
+editor_options:  
+  chunk_output_type: console
+---
+
+# Load libraries
+
+```{r}
+library(devtools)
+library(dplyr)
+library(tidyverse)
+library(car)
+library(GGally)
+library(stats)
+library(gplots)
+library(ggplot2)
+library(ggpubr)
+library(rstatix)
+library(effectsize)
+library(arm) 
+library(ggfortify)
+library(erikmisc)
+library(rcompanion)
+library(binom)
+library(ggeasy) #To easily remove y-axis or x-axis only
+library(iNEXT)
+```
+
+# Load data
+
+Code last updated 01/02/2025
+
+```{r}
+setwd("/Users/danie/Desktop/BarrowLab/Projects/VireoMalaria/Rarefaction")
+#Load abundance data
+bird_data <- list(
+  #"Bell's Vireo" = c(0,1,0,1,0,10,0,0,0,0,0,0,0,0,0,0,0,0),  # 12 samples total - not used in this analyses
+  "Gray Vireo" = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,114,1,7), # 123 samples total
+  "Plumbeous Vireo" = c(1,25,1,0,14,1,2,8,1,1,1,1,1,1,0,0,0,0) # 58 samples total
+)
+#Run iNEXT for rarefaction and extrapolation
+iNEXT_output <- iNEXT(bird_data, q = 0, datatype = "abundance", endpoint = 400)
+iNEXT_output
+
+# View summary of results
+summary(iNEXT_output)
+```
+
+##--------------------------------------------------------------
+
+#Extracting estimated N of parasite lineages
+
+##Gray vireo: Nest = 5, s.e.= 0.538, LCL = 4, UCL = 6.03
+
+## Plumbeous vireo: Nest = 53, s.e.= 19.8, LCL = 14, UCL = 92
+
+```{r}
+#EXTRACTING THE ESTIMATED TOTAL NUMBER OF PARASITE LINEAGES ------------------------------
+# Extract asymptote estimates
+asymptote_data <- iNEXT_output$AsyEst
+parasite_rich <- filter(asymptote_data, asymptote_data$Diversity == "Species richness")
+print(parasite_rich)
+#        Assemblage             Diversity                 Obs.Est.       s.e.           LCL             UCL
+# 1     Bell's Vireo        Species richness  3           3.916667      0.7576095        3.000000       5.401554 (removed)
+# 2     Gray Vireo          Species richness  4           4.99187       0.5294152        4              6.029505
+# 3     Plumbeous Vireo     Species richness  13          52.80172      22.3133074       13             96.535003
+# write.csv(parasite_rich, "parasite_richness_iNEXT.csv")
+```
+
+## -------------------------------------------------------------- 
+# Extracting estimated screening effort to sample 95-99% of parasite lineages possible
+
+## Bells vireo: Nest = 33, qD = 3.89, qDLCL = 2.01, qDUCL = 5.76
+
+## Gray vireo: Nest = 14, qD = 1.78, qDLCL = 1.09, qDUCL = 2.49 
+
+## Plumbeous vireo: Nest = 364, qD = 40.7, qDLCL = 10.9, qDUCL = 70.6
+
+```{r}
+#EXTRACTING THE ESTIMATED NUMBER OF SCREENING EFFORT NEEDED -----------------------------
+#Trying to add completeness (estimated n of birds needed to screen to capture)
+# Extract completeness-based estimates
+completeness_data <- iNEXT_output$iNextEst$coverage_based
+
+# View the extrapolated completeness data
+print(completeness_data)
+
+# # Filter for 95% completeness (SC >= 0.95)
+# sampling_effort_95 <- completeness_data[completeness_data$SC >= 0.95 & completeness_data$SC < 0.96, ]
+# Filter for 95-99% completeness (SC >= 0.95)
+sampling_effort_99 <- completeness_data[completeness_data$SC >= 0.95 & completeness_data$SC < 1, ]
+
+#Add row IDs to manually select cut-offs for minimum samples needed to sample >95% parasite diversity
+sampling_effort_99$ID <- seq.int(nrow(sampling_effort_99))
+sampling_effort_99
+#         Assemblage        SC   m        Method Order.q        qD   qD.LCL    qD.UCL ID
+# 3       Gray Vireo 0.9567981  14   Rarefaction       0  1.808121 1.147745  2.468496  1 ****** Selected ******
+# 4       Gray Vireo 0.9658965  21   Rarefaction       0  2.081460 1.453463  2.709457  2
+# 5       Gray Vireo 0.9715033  27   Rarefaction       0  2.271209 1.658000  2.884418  3
+# 6       Gray Vireo 0.9761098  34   Rarefaction       0  2.455834 1.837999  3.073670  4
+# 7       Gray Vireo 0.9791705  41   Rarefaction       0  2.613140 1.983957  3.242322  5
+# 8       Gray Vireo 0.9811316  48   Rarefaction       0  2.752542 2.112187  3.392897  6
+# 9       Gray Vireo 0.9821988  54   Rarefaction       0  2.862859 2.214841  3.510876  7
+# 10      Gray Vireo 0.9829581  61   Rarefaction       0  2.984946 2.330735  3.639157  8
+# 11      Gray Vireo 0.9833762  68   Rarefaction       0  3.102834 2.444935  3.760734  9
+# 12      Gray Vireo 0.9835671  74   Rarefaction       0  3.202042 2.542355  3.861730 10
+# 13      Gray Vireo 0.9836765  81   Rarefaction       0  3.316693 2.655979  3.977408 11
+# 14      Gray Vireo 0.9837209  88   Rarefaction       0  3.430800 2.769664  4.091935 12
+# 15      Gray Vireo 0.9837357  95   Rarefaction       0  3.544699 2.883422  4.205976 13
+# 16      Gray Vireo 0.9837391 101   Rarefaction       0  3.642274 2.980964  4.303583 14
+# 17      Gray Vireo 0.9837398 108   Rarefaction       0  3.756098 3.094781  4.417414 15
+# 18      Gray Vireo 0.9837398 115   Rarefaction       0  3.869918 3.208601  4.531235 16
+# 19      Gray Vireo 0.9837398 117   Rarefaction       0  3.899224 3.237907  4.560541 17
+# 20      Gray Vireo 0.9840021 123      Observed       0  4.000000 3.336160  4.663840 18
+# 21      Gray Vireo 0.9842601 124 Extrapolation       0  4.015998 3.349581  4.682415 19
+# 22      Gray Vireo 0.9874647 138 Extrapolation       0  4.214680 3.512296  4.917065 20
+# 23      Gray Vireo 0.9901778 153 Extrapolation       0  4.382895 3.654273  5.111518 21
+# 24      Gray Vireo 0.9921776 167 Extrapolation       0  4.506880 3.746043  5.267716 22
+# 25      Gray Vireo 0.9938707 182 Extrapolation       0  4.611851 3.839981  5.383721 23
+# 26      Gray Vireo 0.9951186 196 Extrapolation       0  4.689221 3.907406  5.471036 24
+# 27      Gray Vireo 0.9961751 211 Extrapolation       0  4.754726 3.964095  5.545358 25
+# 28      Gray Vireo 0.9969538 225 Extrapolation       0  4.803007 4.006011  5.600004 26
+# 29      Gray Vireo 0.9976131 240 Extrapolation       0  4.843885 4.041732  5.646038 27
+# 30      Gray Vireo 0.9980991 254 Extrapolation       0  4.874014 4.068240  5.679787 28
+# 31      Gray Vireo 0.9985105 269 Extrapolation       0  4.899523 4.090820  5.708225 29
+# 32      Gray Vireo 0.9988138 283 Extrapolation       0  4.918324 4.107545  5.729103 30
+# 33      Gray Vireo 0.9990705 298 Extrapolation       0  4.934242 4.121754  5.746731 31
+# 34      Gray Vireo 0.9992598 312 Extrapolation       0  4.945975 4.132257  5.759693 32
+# 35      Gray Vireo 0.9994200 327 Extrapolation       0  4.955909 4.141162  5.770655 33
+# 36      Gray Vireo 0.9995381 341 Extrapolation       0  4.963230 4.147735  5.778725 34
+# 37      Gray Vireo 0.9996380 356 Extrapolation       0  4.969429 4.153301  5.785557 35
+# 38      Gray Vireo 0.9997117 370 Extrapolation       0  4.973998 4.157403  5.790593 36
+# 39      Gray Vireo 0.9997741 385 Extrapolation       0  4.977866 4.160877  5.794855 37
+# 40      Gray Vireo 0.9998230 400 Extrapolation       0  4.980897 4.163596  5.798198 38
+# 78 Plumbeous Vireo 0.9530077 364 Extrapolation       0 40.701218 0.000000 82.965254 39 ****** Selected ******
+# 79 Plumbeous Vireo 0.9561864 382 Extrapolation       0 41.519727 0.000000 84.287722 40
+# 80 Plumbeous Vireo 0.9591501 400 Extrapolation       0 42.282870 0.000000 85.521665 41
+host_sampling_effort_95_99 <- subset(sampling_effort_99, 
+                                     sampling_effort_99$ID == "1" | 
+                                     #sampling_effort_99$ID == "11" | (removed)
+                                     sampling_effort_99$ID == "39")
+print(host_sampling_effort_95_99)
+#         Assemblage        SC   m        Method Order.q        qD   qD.LCL    qD.UCL ID
+# 3       Gray Vireo 0.9567981  14   Rarefaction       0  1.808121 1.147745  2.468496  1
+# 78 Plumbeous Vireo 0.9530077 364 Extrapolation       0 40.701218 0.000000 82.965254 39
+
+# write.csv(host_sampling_effort_95_99, "host_sampling_effort_95-99.csv")
+
+
+#Bells at 0.99 completeness at 38 birds
+#Grays at 0.95 completeness at 14 birds, and 0.99 completeness at 167 birds
+#Plumbeous at 0.95 completeness at 360 birds, and 0.98 completeness at 500 birds
+
+#Create dataframe with y and x-axis, where y is n parasite lineages (max estimated) & x is minimum n infections sampled needed to hit maximum
+# 
+# estimates <- read.csv("rarefaction_estimate_table.csv")
+```
+
+#Visualization
+
+```{r}
+#PLOT RAREFACTION CURVES--------------------------------------------
+# Define custom colors for each host species; #slightly darker than original colors
+custom_colors <- c(
+ # "Bell's Vireo" = "#E3C50F",  
+  "Gray Vireo" = "#8A8A8A",   
+  "Plumbeous Vireo" = "#65A2E5" 
+)
+#This plot shows
+# 
+# Solid lines: Observed rarefaction.
+# Dashed lines: Extrapolated diversity.
+# Shaded areas: 95% confidence intervals.
+# Each host species represented as a separate curve
+
+p <- ggiNEXT(iNEXT_output, type = 1, se=TRUE) +
+  scale_color_manual(values = custom_colors) +
+  scale_fill_manual(values = custom_colors) + # Match fill to line colors
+  scale_shape_manual(values=c(19, 19, 19)) +
+  theme_minimal() +
+  labs(
+    title = "Rarefaction and extrapolation curves",
+    x = "Number of Infections Sampled",
+    y = "Number of Parasite Lineages"
+  ) +
+  scale_x_continuous(limits=c(0,380), #set number of axis ticks
+                     expand = c(0,0), #removes within-plot margin
+                     breaks = scales::pretty_breaks(n = 10))  + 
+  scale_y_continuous(limits=c(0,80), #set axis limits
+                     expand = c(0,0), #removes within-plot margin
+                     breaks = scales::pretty_breaks(n = 5)) + #set number of axis ticks
+  theme_bw() + 
+  theme(plot.title.position = "plot", plot.title = element_text(face="bold")) +
+  theme(legend.position = "none") +
+  theme(axis.text.y=element_text(size=10), 
+        axis.text.x=element_text(size=10), 
+        axis.title=element_text(size=12)) +
+  theme(plot.background = element_blank()) + 
+  theme(panel.grid.major = element_blank()) + 
+  theme(panel.grid.minor = element_blank()) + 
+  theme(panel.background = element_blank()) + 
+  theme(panel.background = element_blank()) +
+  theme(legend.position = "blank")
+plot(p)
+# ggsave(p, filename="Fig2_rarefaction_byHost_V2.pdf", bg="transparent", height=6, width=8, units="in")
+```

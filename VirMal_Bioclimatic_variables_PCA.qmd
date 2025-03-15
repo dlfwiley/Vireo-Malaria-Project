@@ -1,0 +1,344 @@
+---
+title: "Principal component analysis for temperature and precipitation variables"
+author: Dani Wiley
+date:   last-modified
+editor: visual
+description: |
+  We perform principal component analysis to reduce 19 BioClimatic Variables having to do with temperature & precipitation into two dimensions. 
+
+format:
+  html:
+    theme:            litera
+    highlight-style:  atom-one
+    page-layout:      full      # article, full   # https://quarto.org/docs/output-formats/page-layout.html
+    toc:              true
+    toc-location:     body  # body, left, right
+    number-sections:  false
+    self-contained:         false     # !!! this can cause a render error
+    code-overflow:          scroll    # scroll, wrap
+    code-block-bg:          true
+    code-block-border-left: "#30B0E0"
+    code-copy:              false     # true, false, hover a copy buttom in top-right of code block
+---
+
+#------------------------------------------------ #Load packages
+
+```{r}
+library(dplyr)
+library(stats)
+library(factoextra)
+library(arm)
+library(ggplot2)
+library(corrplot)
+```
+
+#Load Data
+
+```{r}
+#Infection prevalence datasets:---------------------------------------------------
+
+#hp prevalence dataset: contains all positive and negative individuals
+df_p_hp <- read.csv("Host_Sample_Dataset.csv")
+df_p_hp <- dplyr::filter(df_p_hp, !is.na(df_p_hp$Haem_01))
+```
+
+#------------------------------------------------
+
+# WorldClim Environmental variables
+
+Our data frames (both intensity and prevalence) have climatic variables already associated with each point. Point here refers to the latitude and longitude where the individual frog was collected, as recorded by each individuals unique Arctos entry (<https://arctos.database.museum/>). Specific Franklin, FL individuals who are on St. George & St. Vincent barrier islands were calculated from the next nearest mainland point, as BioClim does not have data for these specific islands.
+
+WORLDCLIM CODEBOOK
+
+```         
+ Downloaded 1 March 2024 at 30s resolution. They are coded as follows:  
+ BIO1  = Annual Mean Temperature  
+ BIO2  = Mean Diurnal Range (Mean of monthly (max temp - min temp)) 
+ BIO3  = Isothermality (BIO2/BIO7) (* 100) 
+ BIO4  = Temperature Seasonality (standard deviation *100) 
+ BIO5  = Max Temperature of Warmest Month 
+ BIO6  = Min Temperature of Coldest Month 
+ BIO7  = Temperature Annual Range (BIO5-BIO6) 
+ BIO8  = Mean Temperature of Wettest Quarter 
+ BIO9  = Mean Temperature of Driest Quarter 
+ BIO10 = Mean Temperature of Warmest Quarter 
+ BIO11 = Mean Temperature of Coldest Quarter 
+ BIO12 = Annual Precipitation 
+ BIO13 = Precipitation of Wettest Month 
+ BIO14 = Precipitation of Driest Month 
+ BIO15 = Precipitation Seasonality (Coefficient of Variation) 
+ BIO16 = Precipitation of Wettest Quarter 
+ BIO17 = Precipitation of Driest Quarter
+ BIO18 = Precipitation of Warmest Quarter BIO19 = Precipitation of Coldest Quarter  Elev  = STRM elevation from Worldclim 30s
+```
+
+1\) Scaleddata = scale(data) {base} ; subtracts column's mean (center) and divides the centered column by the deviation (scale), takes only numeric variables
+
+2\) Pcaresults = prcomp(Scaleddata) {stats} ; Assumes samples to be rows, can also perform scaling if data is unscaled : prcomp(data, scale = TRUE) or to define numberic variables: prcomp(\~v1+v2+v3, data, scale = TRUE)
+
+3\) summary(Pcaresults) and/or plot(Pcaresults) ; shows proportion of variance explained by each PC.
+
+#------------------------------------------------
+
+### Temperature PCA
+
+```{r}
+#hp-----------------------------------------------------------------------
+#Separate out wanted variables
+bioclim_temp.hp.p <- df_p_hp[c(47:57)] #ALWAYS DOUBLE CHECK THESE
+# PCA of temperature data
+library(stats)
+temp.PCA.hp.p <-
+  prcomp( 
+    bioclim_temp.hp.p, center = TRUE, scale. = TRUE
+  )
+summary(temp.PCA.hp.p)
+#PC1 explains 54.3% of variation in the data 
+#PC2 explains a further 84.2% of the variation in the data
+
+
+#Adding PC1 & PC2 to df--------------------------------------------------------
+# Add PCs to the dataframe as variables: 
+df_p_hp$TPC1 <- temp.PCA.hp.p$x[,"PC1"]
+df_p_hp$TPC1 <- as.numeric(unlist(df_p_hp$TPC1))
+df_p_hp$TPC2 <- temp.PCA.hp.p$x[,"PC2"]
+df_p_hp$TPC2 <- as.numeric(unlist(df_p_hp$TPC2))
+```
+
+```{r, fig.height= 8, fig.width=10}
+#{factoextra}
+#PCA Scree plot:
+fviz_eig(temp.PCA.hp.p)
+#-----------------------------Visualizing loadings------------------------------
+#PCA Loadings:
+fviz_pca_var(temp.PCA.hp.p, col.var = "contrib")
+#Contributions to Temperature PC1
+fviz_contrib(temp.PCA.hp.p, choice = "var", axes = 1)
+
+#As you go up PC1
+#For PC1 the variables below all contribute the most
+
+#BIO11:Mean Temperature of Coldest Quarter      As TPC1 increases, Mean Temperature of Coldest Quarter decrease
+ggplot(df_p_hp, aes(x = TPC1, y = bio11)) + geom_line()
+
+#BIO1: Annual Mean Temperature                  As TPC1 increases, Annual Mean Temperature decrease
+ggplot(df_p_hp, aes(x = TPC1 , y = bio1)) + geom_line()
+
+#BIO8: Mean Temperature of Wettest Quarter      As TPC1 increases, Mean Temperature of Wettest Quarter decrease
+ggplot(df_p_hp, aes(x = TPC1 , y = bio8)) + geom_line()
+
+#BIO6: Min Temperature of Coldest Month         As TPC1 increases, Min Temperature of Coldest Month decreases
+ggplot(df_p_hp, aes(x = TPC1 , y = bio6)) + geom_line()
+
+#BIO10: Mean Temp of Warmest Quarter            As TPC1 increases, Mean Temp of Warmest Quarter decrease
+ggplot(df_p_hp, aes(x = TPC1 , y = bio10)) + geom_line()
+
+#BIO5: Max Temperature of Warmest Month         As TPC1 increases, Max Temperature of Warmest Month decreases
+ggplot(df_p_hp, aes(x = TPC1 , y = bio5)) + geom_line()
+
+#-------------------------------------------------------------------------------------------
+#Contributions to Temperature PC2
+fviz_contrib(temp.PCA.hp.p, choice = "var", axes = 2)
+#For PC2 the variables below all contribute the most:
+
+#BIO4: Temperature Seasonality (standard deviation *100)  As TPC2 increases, Temperature seasonality increases
+ggplot(df_p_hp, aes(x =  TPC2 , y = bio4)) + geom_line()
+
+#BIO3: Isothermality (BIO2/BIO7) (* 100)                  As TPC2 increases, Isothermality (BIO2/BIO7) (* 100) decrease
+ggplot(df_p_hp, aes(x =  TPC2 , y = bio3)) + geom_line()
+
+#BIO7: Temperature Annual Range (BIO5-BIO6)               As TPC2 increases, Temperature Annual Range (BIO5-BIO6) increase
+ggplot(df_p_hp, aes(x =  TPC2 , y = bio7)) + geom_line()
+
+var=get_pca_var(temp.PCA.hp.p)
+var
+corrplot(var$cos2, is.corr=FALSE)
+temp.PCA.hp.p
+#                                                       PC1         PC2
+# BIO1_Annual_Mean_Temperature_30s              -0.402715411  0.084879713  
+# BIO2_Mean_Diurnal_Range_30s                   -0.201828228 -0.271970067 
+# BIO3_Isothermality_30s                        -0.162493771 -0.47336598 
+# BIO4_Temperature_Seasonality_30s               0.004203995  0.543818410
+# BIO5_Max_Temperature_of_Warmest_Month_30s     -0.362175187  0.251539344 
+# BIO6_Min_Temperature_of_Coldest_Month_30s     -0.395770349 -0.016234013 
+# BIO7_Temperature_Annual_Range_30s              0.006484119  0.466107729
+# BIO8_Mean_Temperature_of_Wettest_Quarter_30s  -0.402399762 -0.008562227 
+# BIO9_Mean_Temperature_of_Driest_Quarter_30s    0.118271339  0.271236369  
+# BIO10_Mean_Temperature_of_Warmest_Quarter_30s  0.118271339  0.271236369 
+# BIO11_Mean_Temperature_of_Coldest_Quarter_30s -0.403550540 -0.057729454  
+```
+
+#### Interpretation: TPC1 & TPC2
+
+Higher TPC1 = Cooler year round; Lower TPC1 = Warmer year round; Higher TPC2 = More seasonality & fluctuating temps throughout the day-night and year; Lower TPC2 = Less seasonality & more stable temps throughout the day-night and year
+
+#### Visualization
+
+```{r}
+## Plot PCA Results: 
+library(ggfortify)
+library(ggplot2)
+# Plot PC1 and PC2 by site (all points appear in black): 
+autoplot(temp.PCA.hp.p) # colour = 'site') 
+# This plot prints proper PCA output. I can't get this to colour by site though because site isn't a variable in the PCA dataset
+
+p <- ggplot(data=df_p_hp, aes(x=TPC1, y=TPC2, color=common_name))
+p <- p + geom_point(size=2.5)
+p <- p + labs(x = "TPC1 54.3%", y = "TPC2 29.9%", color="Species")
+p <- p + theme_bw()
+p <- p + theme(plot.background = element_blank())
+p <- p + theme(panel.grid.major = element_blank())
+p <- p + theme(panel.grid.minor = element_blank())
+p <- p + theme(panel.background = element_blank())
+print(p)
+```
+
+Clear pattern of clustering in the data based on species, with Plumbeous having much higher TPC1 values (colder), then Gray, then Bell's & Plumbeous also having the most variable TPC2 values (high seasonality/fluctuation & low seasonality/fluctuation), whereas majority of Plumbeous, almost all of Gray, and all of Bell's have similar, near-zero TPC2.
+
+#Visualization
+
+```{r}
+#hp
+## Plot PCA Results: 
+df_p_hp$Haem_01 <- as.factor(df_p_hp$Haem_01)
+library(ggplot2)
+p1 <- ggplot(data=df_p_hp, aes(x=TPC1, y=TPC2, colour = Haem_01))
+p1 <- p1 + geom_point(size=3.5) 
+p1 <- p1 + labs(x = "TPC1 54.3%", y = "TPC2 29.9%", color="Species")
+p1 <- p1 + theme_bw()
+p1 <- p1 + theme(plot.background = element_blank())
+p1 <- p1 + theme(panel.grid.major = element_line())
+p1 <- p1 + theme(panel.grid.minor = element_line())
+p1 <- p1 + theme(panel.background = element_blank())
+print(p1)
+```
+
+No clear pattern in infection status yet.
+#------------------------------------------------------------------------
+
+### Precipitation PCA
+
+```{r}
+#hp precipitation data
+bioclim_precip.hp.p <- df_p_hp[c(58:65)]
+
+# PCA of temperature data
+library(stats)
+precip.PCA.hp.p <-
+  prcomp( 
+    bioclim_precip.hp.p, center = TRUE, scale. = TRUE
+  )
+summary(precip.PCA.hp.p)
+#PC1 explains 62.6% of variation in the data 
+#PC2 explains a further 92.8% of the variation in the data
+
+#Adding PC1 & PC2 to df--------------------------------------------------------
+# Add PCs to the dataframe as variables: 
+df_p_hp$PPC1 <- precip.PCA.hp.p$x[,"PC1"]
+df_p_hp$PPC1 <- as.numeric(unlist(df_p_hp$PPC1))
+df_p_hp$PPC2 <- precip.PCA.hp.p$x[,"PC2"]
+df_p_hp$PPC2 <- as.numeric(unlist(df_p_hp$PPC2))
+
+# write.csv(df_p_hp, file = "VirMal_dataset_pcavarlist.csv")
+```
+
+```{r, fig.height= 8, fig.width=10}
+#{factoextra}
+#PCA Scree plot:
+library(factoextra)
+fviz_eig(precip.PCA.hp.p)
+
+#Visualizing loadings----------------------------------------------------------
+#PCA Loadings:
+fviz_pca_var(precip.PCA.hp.p, col.var = "contrib")
+
+#Contributions to Precipitation PC1
+fviz_contrib(precip.PCA.hp.p, choice = "var", axes = 1)
+
+#For PC1 the variables below all contribute the most
+#As you go up PC1
+  
+#BIO12: Annual Precipitation                                  As PPC1 increases, Annual Precipitation increases
+ggplot(df_p_hp, aes(x = PPC1, y = bio12)) + geom_line()
+
+#BIO18: Precipitation of warmest quarter                      As PPC1 increases, Precipitation of warmest quarter increases
+ggplot(df_p_hp, aes(x = PPC1, y = bio18)) + geom_line()
+
+#BIO13: Precipitation of Wettest Month                        As PPC1 increases, Precipitation of Wettest Month increases
+ggplot(df_p_hp, aes(x = PPC1, y = bio13)) + geom_line()
+
+#BIO16: Precipitation of wettest quarter                      As PPC1 increases, Precipitation of wettest quarter increases
+ggplot(df_p_hp, aes(x = PPC1, y = bio16)) + geom_line()
+
+#Contributions to Precipitation PC2
+fviz_contrib(precip.PCA.hp.p, choice = "var", axes = 2)
+#For PC2 the variables below all contribute the most:
+#As you go up PC2
+
+#BIO15: Precipitation Seasonality (Coefficient of Variation)  As PPC2 increases, Precipitation Seasonality decreases
+ggplot(df_p_hp, aes(x = PPC2, y = bio15)) + geom_line()
+
+#BIO17: Precipitation of Driest Quarter                       As PPC2 increases, Precipitation of Driest Quarter increases
+ggplot(df_p_hp, aes(x = PPC2, y = bio17)) + geom_line()
+
+
+var1=get_pca_var(precip.PCA.hp.p)
+var1
+precip.PCA.hp.p
+#                                                                     PC1         PC2         
+# BIO12_Annual_Precipitation_30s                                  0.43621458  0.05822107  
+# BIO13_Precipitation_of_Wettest_Month_30s                        0.38683905 -0.31886893 
+# BIO14_Precipitation_of_Driest_Month_30s                         0.35565322  0.22993015 
+# BIO15_Precipitation_Seasonality_coefficient.of.variation_30s   -0.05000509 -0.62824144 (larger represent greater variability)
+# BIO16_Precipitation_of_Wettest_Quarter_30s                      0.38212117 -0.32838437 
+# BIO17_Precipitation_of_Driest_Quarter_30s                       0.33675168  0.39167974  
+# BIO18_Precipitation_of_Warmest_Quarter_30s                      0.38695787 -0.31852826 
+# BIO19_Precipitation_of_Coldest_Quarter_30s                      0.34918189  0.29097794 
+var=get_pca_var(precip.PCA.hp.p)
+var
+corrplot(var$cos2, is.corr=FALSE)
+```
+
+#### Interpretation: PPC1 & PPC2
+
+Higher PPC1 = More precipitation; Lower PPC1 = Less precipitation; Higher PPC2 = Precipitation throughout seasons more stable and more precipitation during driest quarter; Lower PPC2 = More seasonal precipitation and less precipitation during driest quarter
+
+#Visualization
+
+```{r}
+## Plot PCA Results: 
+library(ggfortify)
+library(ggplot2)
+# Plot PC1 and PC2 by site (all points appear in black): 
+autoplot(precip.PCA.hp.p) # colour = 'site') 
+# This plot prints proper PCA output. I can't get this to colour by site though because site isn't a variable in the PCA dataset
+
+p2 <- ggplot(data=df_p_hp, aes(x=PPC1, y=PPC2, color=common_name))
+p2 <- p2 + geom_point(size=2.5)
+p2 <- p2 + labs(x = "PPC1 62.6%", y = "PPC2 30.2%", color="Species")
+p2 <- p2 + theme_bw()
+p2 <- p2 + theme(plot.background = element_blank())
+p2 <- p2 + theme(panel.grid.major = element_blank())
+p2 <- p2 + theme(panel.grid.minor = element_blank())
+p2 <- p2 + theme(panel.background = element_blank())
+print(p2)
+```
+
+Somehwat clear pattern of clustering in the data based on species, with Plumbeous having much higher PPC1 values (wetter), then Gray, then Bell's. Plumbeous also has the most variable PPC2 values (high precip seasonality), whereas the Gray and Bell's are less variable, near zero PPC2.
+
+```{r}
+## Plot PCA Results: 
+df_p_hp$Haem_01 <- as.factor(df_p_hp$Haem_01)
+library(ggplot2)
+p3 <- ggplot(data=df_p_hp, aes(x=PPC1, y=PPC2, colour = Haem_01))
+p3 <- p3 + geom_point(size=3.5) 
+p3 <- p3 + labs(x = "PPC1 62.6%", y = "PPC2 30.2%", color="Species")
+p3 <- p3 + theme_bw()
+p3 <- p3 + theme(plot.background = element_blank())
+p3 <- p3 + theme(panel.grid.major = element_line())
+p3 <- p3 + theme(panel.grid.minor = element_line())
+p3 <- p3 + theme(panel.background = element_blank())
+print(p3)
+```
+No clear pattern infection status yet, though they look to be around or below 0 on PPC2 axis.
+
