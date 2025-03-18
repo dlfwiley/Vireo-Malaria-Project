@@ -4,7 +4,7 @@ author: Dani Wiley
 date:   last-modified
 editor: visual
 description: |
-  Creates dataframe and calculates rarefaction curve, aspymtote (number of estimated parasite lineages), and estimated sampling effort needed to fully sample parasite communities for each of Vireo species. Contact dlfwiley@gmail.com with any questions or requests for more data.
+  Creates dataframe and calculates rarefaction curve, aspymtote (number of estimated parasite lineages), and estimated sampling effort needed to fully sample parasite communities for gray and plumbeous vireo species. Contact dlfwiley[at]gmail.com with any questions or requests for more data.
 format:
   html:
     theme:            litera
@@ -168,15 +168,6 @@ print(host_sampling_effort_95_99)
 # 78 Plumbeous Vireo 0.9517678 364 Extrapolation       0 40.558813 11.310413 69.807214 39
 
  write.csv(host_sampling_effort_95_99, "host_sampling_effort_95.csv")
-
-
-#Bells at 0.99 completeness at 38 birds
-#Grays at 0.95 completeness at 14 birds, and 0.99 completeness at 167 birds
-#Plumbeous at 0.95 completeness at 360 birds, and 0.98 completeness at 500 birds
-
-#Create dataframe with y and x-axis, where y is n parasite lineages (max estimated) & x is minimum n infections sampled needed to hit maximum
-# 
-# estimates <- read.csv("rarefaction_estimate_table.csv")
 ```
 
 #Visualization
