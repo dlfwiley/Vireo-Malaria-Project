@@ -21,7 +21,8 @@ format:
     code-copy:              false     # true, false, hover a copy buttom in top-right of code block
 ---
 
-#------------------------------------------------ #Load packages
+#------------------------------------------------ 
+# Load packages
 
 ```{r}
 library(dplyr)
@@ -182,15 +183,24 @@ library(ggplot2)
 autoplot(temp.PCA.hp.p) # colour = 'site') 
 # This plot prints proper PCA output. I can't get this to colour by site though because site isn't a variable in the PCA dataset
 
-p <- ggplot(data=df_p_hp, aes(x=TPC1, y=TPC2, color=common_name))
-p <- p + geom_point(size=2.5)
-p <- p + labs(x = "TPC1 54.3%", y = "TPC2 29.9%", color="Species")
-p <- p + theme_bw()
-p <- p + theme(plot.background = element_blank())
-p <- p + theme(panel.grid.major = element_blank())
-p <- p + theme(panel.grid.minor = element_blank())
-p <- p + theme(panel.background = element_blank())
-print(p)
+# Define a colorblind-friendly palette
+color_palette <- c("#F3DA44", "#A0A0A0", "#89B8EB")
+
+# Create the PCA plot with axis lines
+p1 <- ggplot(data=df_p_hp, aes(x=TPC1, y=TPC2, fill=common_name)) +
+  geom_point(size=3, stroke=0.8, shape=21, color="black") +  # Black outline, species-colored fill
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +  # Add horizontal axis line
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +  # Add vertical axis line
+  scale_fill_manual(values = color_palette) +  # Use fill instead of color
+  labs(x = "TPC1 (54.3%)", y = "TPC2 (29.9%)", color = "Species") +
+  theme_bw() +
+  theme(plot.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        legend.position = "none")
+
+print(p1)
 ```
 
 Clear pattern of clustering in the data based on species, with Plumbeous having much higher TPC1 values (colder), then Gray, then Bell's & Plumbeous also having the most variable TPC2 values (high seasonality/fluctuation & low seasonality/fluctuation), whereas majority of Plumbeous, almost all of Gray, and all of Bell's have similar, near-zero TPC2.
@@ -213,8 +223,7 @@ p1 <- p1 + theme(panel.background = element_blank())
 print(p1)
 ```
 
-No clear pattern in infection status yet.
-#------------------------------------------------------------------------
+No clear pattern in infection status yet. #------------------------------------------------------------------------
 
 ### Precipitation PCA
 
@@ -313,14 +322,24 @@ library(ggplot2)
 autoplot(precip.PCA.hp.p) # colour = 'site') 
 # This plot prints proper PCA output. I can't get this to colour by site though because site isn't a variable in the PCA dataset
 
-p2 <- ggplot(data=df_p_hp, aes(x=PPC1, y=PPC2, color=common_name))
-p2 <- p2 + geom_point(size=2.5)
-p2 <- p2 + labs(x = "PPC1 62.6%", y = "PPC2 30.2%", color="Species")
-p2 <- p2 + theme_bw()
-p2 <- p2 + theme(plot.background = element_blank())
-p2 <- p2 + theme(panel.grid.major = element_blank())
-p2 <- p2 + theme(panel.grid.minor = element_blank())
-p2 <- p2 + theme(panel.background = element_blank())
+# Define a colorblind-friendly palette
+color_palette <- c("#F3DA44", "#A0A0A0", "#89B8EB")
+
+# Create the PCA plot with axis lines
+p2 <- ggplot(data=df_p_hp, aes(x=PPC1, y=PPC2, fill=common_name)) +
+  geom_point(size=3, stroke=0.8, shape=21, color="black") +  # Black outline, species-colored fill
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +  # Add horizontal axis line
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +  # Add vertical axis line
+  scale_fill_manual(values = color_palette) +  # Use fill instead of color
+  labs(x = "PPC1 62.6%", y = "PPC2 30.2%", fill="Species") +
+  theme_bw() +
+  theme(plot.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        legend.position = "top",  # Place the legend at the top
+        legend.direction = "horizontal")  # Horizontal legend)
+
 print(p2)
 ```
 
@@ -340,5 +359,37 @@ p3 <- p3 + theme(panel.grid.minor = element_line())
 p3 <- p3 + theme(panel.background = element_blank())
 print(p3)
 ```
+
 No clear pattern infection status yet, though they look to be around or below 0 on PPC2 axis.
 
+Supplemental Figure 2
+```{r}
+library(gridExtra)
+library(ggpubr)
+# Extract the legend from p2 by using guides()
+legend <- get_legend(p2)
+# Create the PCA plot with axis lines
+p2 <- ggplot(data=df_p_hp, aes(x=PPC1, y=PPC2, fill=common_name)) +
+  geom_point(size=3, stroke=0.8, shape=21, color="black") +  # Black outline, species-colored fill
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +  # Add horizontal axis line
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +  # Add vertical axis line
+  scale_fill_manual(values = color_palette) +  # Use fill instead of color
+  labs(x = "PPC1 62.6%", y = "PPC2 30.2%", fill="Species") +
+  theme_bw() +
+  theme(plot.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        legend.position = "none") #removes the legend from p2, after creating the legend item from previous p2.
+
+print(p2)
+
+# Combine the two plots and the legend
+combined_plot <- grid.arrange(
+  p1, p2, legend, 
+  ncol = 1, 
+  heights = c(1, 1, 0.1)  # Adjust the heights so the legend takes less space
+)
+# Save the combined plot as a PDF
+ggsave("PCA_plot_combined.pdf", combined_plot, width = 10, height = 8)
+```
