@@ -177,12 +177,12 @@ table(df_p_hp$common_name, df_p_hp$Haem_01)
 ## -----------------------------------------------
 
 ## PT 1 START:
-Note about effect size: 
-Effect size with contingency tables larger than 2x2 will be calculated with CramerV function (species comparison). Whereas 2x2 contingency tables will be calculated by phi function (all other chi-squared). 
+
+Note about effect size: Effect size with contingency tables larger than 2x2 will be calculated with CramerV function (species comparison). Whereas 2x2 contingency tables will be calculated by phi function (all other chi-squared).
+
 # Species v infection status
 
 ## All vireos: Significant χ2 (p-value = 0.015, w = 0.185)
-
 
 ```{r}
 # Hypothesis (null): Observed and expected infection status counts do not differ across species.
@@ -419,7 +419,7 @@ Hp_Spp_bar <- ggplot(df_p_hp,
                 width = 0.2)) +
   scale_fill_manual(values = error_c) + # Apply custom colors
   labs(x = "",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected viroes by species") +
+    title = "Proportion of infected vs. uninfected vireos by species") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
@@ -689,7 +689,7 @@ corrplot(Gray.HpLat.chi$residuals,
          is.cor = FALSE)
 ```
 
-## Plumbeous Vireo: Significant MW-U (p-value = 0.086, r = 0.023)
+## Plumbeous Vireo: Significant MW-U (p-value = 0.022, r = 0.305)
 
 ```{r}
 #Prep data:
@@ -806,11 +806,11 @@ Hp_Lat_bar <- ggplot(df_p_hp,
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
   scale_fill_manual(values = Hp_c) + # Apply custom colors
   labs(x = "Latitude (degrees)",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected viroes by latitude") +
+    title = "Proportion of infected vs. uninfected vireos by latitude") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
-  theme(legend.position = "bottom", legend.box = "horizontal") +
+  theme(legend.position = "blank") +
   theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
   axis.title=element_text(size=16)) + # This makes panel header bold 
   # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
@@ -907,7 +907,7 @@ Plum_Lat_bar <- ggplot(Plum_p_hp1,
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
   scale_fill_manual(values = Plum_c) + # Apply custom colors
   #labs(x = "Latitude (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Plumbeous viroes by latitude") +
+  #  title = "Proportion of infected vs. uninfected Plumbeous vireos by latitude") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
@@ -937,7 +937,7 @@ combined_plot <- ((Hp_Lat_bar) /
   plot_annotation(theme = theme_minimal())
 combined_plot <- combined_plot + theme(aspect.ratio = 1) 
 plot(combined_plot)
- ggsave(combined_plot, filename="FigS1_Barplots_InfectedUninfected_Lat.pdf", bg="transparent", height=10, width=10, units="in")
+ ggsave(combined_plot, filename="FigS2.pdf", bg="transparent", height=10, width=10, units="in")
 ```
 
 ## -----------------------------------------------
@@ -1294,7 +1294,7 @@ Hp_elev_prev_box <- ggplot(
         # This is good for labeling figure panels! Avoids having to manually toy w/ hjust and vjust
         # theme(plot.margin = unit(c(0.2,0.2,0.2,0.2), "cm")) +  # top, right, bottom, left    
       #  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + # Keep if you want labels angled; else don't keep
-        theme(legend.position = "none") +
+        theme(legend.position = "blank") +
         theme(axis.text.y=element_text(size=10), axis.text.x=element_text(size=10), axis.title=element_text(size=12)) +
   # theme(panel.border = element_rect(colour = "black", fill=NA, linewidth = 1)) +
    theme(panel.background = element_rect(fill='transparent')) + #transparent panel bg
@@ -1545,6 +1545,7 @@ BellsTPC1_effsize.s <- BellsTPC1_effsize$effsize
 ```
 
 ## Plumbeous Vireo w/ Embudo outlier: Not significant MW-U (p-value = 0.157, r = 0.188)
+
 ## Plumbeous Vireo w/o Embudo outlier: Not significant MW-U (p-value = 0.288, r = 0.143)
 
 ```{r}
@@ -1657,11 +1658,11 @@ Hp_TPC1_bar <- ggplot(df_p_hp,
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
   scale_fill_manual(values = Hp_c) + # Apply custom colors
   labs(x = "TPC1",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected viroes by TPC1") +
+    title = "Proportion of infected vs. uninfected vireos by TPC1") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
-  theme(legend.position = "bottom", legend.box = "horizontal") +
+  theme(legend.position = "blank") +
   theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
   axis.title=element_text(size=16)) + # This makes panel header bold 
   # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
@@ -1756,7 +1757,7 @@ Plum_TPC1_bar <- ggplot(Plum_p_hp1,
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
   scale_fill_manual(values = Plum_c) + # Apply custom colors
   #labs(x = "TPC1 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Plumbeous viroes by TPC1") +
+  #  title = "Proportion of infected vs. uninfected Plumbeous vireos by TPC1") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
@@ -1786,7 +1787,7 @@ combined_plot <- ((Hp_TPC1_bar) /
   plot_annotation(theme = theme_minimal())
 combined_plot <- combined_plot + theme(aspect.ratio = 1) 
 plot(combined_plot)
- ggsave(combined_plot, filename="FigS2_Barplots_InfectedUninfected_TPC1.pdf", bg="transparent", height=10, width=10, units="in") 
+ ggsave(combined_plot, filename="FigS3.pdf", bg="transparent", height=10, width=10, units="in") 
 ```
 
 ## -----------------------------------------------
@@ -1926,6 +1927,7 @@ corrplot(Gray.HpTPC2.chi$residuals,
 At higher TPC2, there are more infected Gray vireos than expected.
 
 ## Plumbeous vireo w/ Embudo outlier: Not significant MW-U (p-value = 0.488, r = 0.093)
+
 ## Plumbeous vireo w/o Embudo outlier: Not significant MW-U (p-value = 0.266, r = 0.149)
 
 ```{r}
@@ -2044,11 +2046,11 @@ Hp_TPC2_bar <- ggplot(df_p_hp,
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
   scale_fill_manual(values = Hp_c) + # Apply custom colors
   labs(x = "TPC2",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected viroes by TPC2") +
+    title = "Proportion of infected vs. uninfected vireos by TPC2") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
-  theme(legend.position = "bottom", legend.box = "horizontal") +
+  theme(legend.position = "blank") +
   theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
   axis.title=element_text(size=16)) + # This makes panel header bold 
   # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
@@ -2143,7 +2145,7 @@ Plum_TPC2_bar <- ggplot(Plum_p_hp1,
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
   scale_fill_manual(values = Plum_c) + # Apply custom colors
   #labs(x = "TPC2 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Plumbeous viroes by TPC2") +
+  #  title = "Proportion of infected vs. uninfected Plumbeous vireos by TPC2") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
@@ -2173,7 +2175,7 @@ combined_plot <- ((Hp_TPC2_bar) /
   plot_annotation(theme = theme_minimal())
 combined_plot <- combined_plot + theme(aspect.ratio = 1) 
 plot(combined_plot)
- ggsave(combined_plot, filename="FigS3_Barplots_InfectedUninfected_TPC2.pdf", bg="transparent", height=10, width=10, units="in")
+ ggsave(combined_plot, filename="FigS4.pdf", bg="transparent", height=10, width=10, units="in")
 ```
 
 ## -----------------------------------------------
@@ -2324,7 +2326,9 @@ GrayPPC1_effsize.s <- GrayPPC1_effsize$effsize
 ```
 
 ## Plumbeous Vireo w/ Embudo outlier: Not significant MW-U (p-value = 0.215, r = 0.165)
+
 ## Plumbeous Vireo w/o Embudo outlier: Not significant MW-U (p-value = 0.281, r = 0.145)
+
 ```{r}
 #Prep data:
 Plum_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Plumbeous Vireo")
@@ -2432,11 +2436,11 @@ Hp_PPC1_bar <- ggplot(df_p_hp,
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
   scale_fill_manual(values = Hp_c) + # Apply custom colors
   labs(x = "PPC1",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected viroes by PPC1") +
+    title = "Proportion of infected vs. uninfected vireos by PPC1") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
-  theme(legend.position = "bottom", legend.box = "horizontal") +
+  theme(legend.position = "blank") +
   theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
   axis.title=element_text(size=16)) + # This makes panel header bold 
   # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
@@ -2531,7 +2535,7 @@ Plum_PPC1_bar <- ggplot(Plum_p_hp1,
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
   scale_fill_manual(values = Plum_c) + # Apply custom colors
   #labs(x = "PPC1 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Plumbeous viroes by PPC1") +
+  #  title = "Proportion of infected vs. uninfected Plumbeous vireos by PPC1") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
@@ -2561,14 +2565,14 @@ combined_plot <- ((Hp_PPC1_bar) /
   plot_annotation(theme = theme_minimal())
 combined_plot <- combined_plot + theme(aspect.ratio = 1) 
 plot(combined_plot)
- ggsave(combined_plot, filename="FigS4_Barplots_InfectedUninfected_PPC1.pdf", bg="transparent", height=10, width=10, units="in")
+ ggsave(combined_plot, filename="FigS5.pdf", bg="transparent", height=10, width=10, units="in")
 ```
 
 ## -----------------------------------------------
 
 # PPC2 v Status
 
-## All viroes: Significant MW-U (p-value = 0.002, r = 0.192)
+## All vireos: Significant MW-U (p-value = 0.002, r = 0.192)
 
 ```{r}
 shapiro.test(df_p_pos$precipPC2)
@@ -2701,6 +2705,7 @@ corrplot(Gray.HpPPC2.chi$residuals,
 ```
 
 ## Plumbeous Vireo w/ Embudo outlier: Nearly significant MW-U (p-value = 0.056, r = 0.192)
+
 ## Plumbeous Vireo w/o Embudo outlier: Not significant MW-U (p-value = 0.064, r = 0.246)
 
 ```{r}
@@ -2812,11 +2817,11 @@ Hp_PPC2_bar <- ggplot(df_p_hp,
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
   scale_fill_manual(values = Hp_c) + # Apply custom colors
   labs(x = "PPC2",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected viroes by PPC2") +
+    title = "Proportion of infected vs. uninfected vireos by PPC2") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
-  theme(legend.position = "bottom", legend.box = "horizontal") +
+  theme(legend.position = "blank") +
   theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
   axis.title=element_text(size=16)) + # This makes panel header bold 
   # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
@@ -2911,7 +2916,7 @@ Plum_PPC2_bar <- ggplot(Plum_p_hp1,
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
   scale_fill_manual(values = Plum_c) + # Apply custom colors
   #labs(x = "PPC2 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Plumbeous viroes by PPC2") +
+  #  title = "Proportion of infected vs. uninfected Plumbeous vireos by PPC2") +
   theme_minimal() +
   theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
         plot.title = element_text(face="bold")) + 
@@ -2941,5 +2946,5 @@ combined_plot <- ((Hp_PPC2_bar) /
   plot_annotation(theme = theme_minimal())
 combined_plot <- combined_plot + theme(aspect.ratio = 1) 
 plot(combined_plot)
-# ggsave(combined_plot, filename="FigS5_Barplots_InfectedUninfected_PPC2_20250102.pdf", bg="transparent", height=10, width=10, units="in")
+ ggsave(combined_plot, filename="FigS6.pdf", bg="transparent", height=10, width=10, units="in")
 ```
