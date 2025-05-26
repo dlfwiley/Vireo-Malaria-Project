@@ -1,7 +1,7 @@
 # Vireo-Malaria-Project
 Title: Haemosporidian diversity dramatically differs among closely related, highly susceptible songbird species; Daniele L. F. Wiley, Jessie L. Williamson, Silas E. Fischer, Selina M. Bauernfeind, Henry Streby, Christopher C. Witt, and Lisa N. Barrow; project data and code.
 
-Wiley et al., 2025 (in prep) Abundance and diversity of haemosporidian parasites dramatically differ among closely related vireo species.
+Wiley et al., 2025 (in prep) Haemosporidian diversity dramatically differs among closely related, highly susceptible songbird species.
 
 In this study, we use pectoral tissues and whole blood samples of three closely related, elevational replacement species of vireo to characterize infection dynamics of avian Haemosporidians across their summer breeding sites in the American Southwest. We asked: What is the distribution, prevalence, and pathogen loads (parasitemia) experienced across these closely related species (Bell’s vireo: n = 20, gray vireo: n = 170, and plumbeous vireo: n = 58) during their breeding season in the southwestern U.S.? And what factors (i.e. host traits: species; environmental factors: temperature, precipitation; geographic features: latitude, elevation) are correlate with infection status and parasitemia?
 
