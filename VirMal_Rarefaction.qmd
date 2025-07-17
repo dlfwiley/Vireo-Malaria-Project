@@ -27,35 +27,20 @@ editor_options:
 # Load libraries
 
 ```{r}
-library(devtools)
-library(dplyr)
-library(tidyverse)
-library(car)
-library(GGally)
-library(stats)
-library(gplots)
-library(ggplot2)
-library(ggpubr)
-library(rstatix)
-library(effectsize)
-library(arm) 
-library(ggfortify)
-library(erikmisc)
-library(rcompanion)
-library(binom)
-library(ggeasy) #To easily remove y-axis or x-axis only
 library(iNEXT)
+library(dplyr)
+library(ggplot2)
+library(scales)
 ```
 
 # Load data
 
-Code last updated 01/02/2025
+Code last updated 7/12/2025
 
 ```{r}
-setwd("/Users/danie/Desktop/BarrowLab/Projects/VireoMalaria/Rarefaction")
 #Load abundance data
 bird_data <- list(
-  #"Bell's Vireo" = c(0,1,0,1,0,10,0,0,0,0,0,0,0,0,0,0,0,0,0),  # 12 samples total - not used in this analyses
+  "Bell's Vireo" = c(0,1,0,1,0,10,0,0,0,0,0,0,0,0,0,0,0,0,0),  # 12 samples total - not used in this analyses
   "Gray Vireo" = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,114,1,7), # 123 samples total
   "Plumbeous Vireo" = c(1,25,1,0,14,4,2,8,1,1,1,1,1,1,1,0,0,0,0) # 62 samples total
 )
@@ -63,16 +48,25 @@ set.seed(123)
 #Run iNEXT for rarefaction and extrapolation
 iNEXT_output <- iNEXT(bird_data, q = 0, datatype = "abundance", endpoint = 400)
 iNEXT_output
-
-# View summary of results
-summary(iNEXT_output)
+#        Assemblage         Diversity  Observed Estimator        s.e.        LCL        UCL
+# 1    Bell's Vireo  Species richness  3.000000  3.916667  0.78410251  3.0000000   5.453479
+# 2    Bell's Vireo Shannon diversity  1.761359  2.053182  0.42530526  1.2195986   2.886765
+# 3    Bell's Vireo Simpson diversity  1.411765  1.466667  0.35284027  0.7751124   2.158221
+# 4      Gray Vireo  Species richness  4.000000  4.991870  0.43769275  4.1340079   5.849732
+# 5      Gray Vireo Shannon diversity  1.365874  1.392621  0.09308512  1.2101775   1.575064
+# 6      Gray Vireo Simpson diversity  1.159577  1.161096  0.05091690  1.0613004   1.260891
+# 7 Plumbeous Vireo  Species richness 14.000000 53.846774 24.21468145 14.0000000 101.306678
+# 8 Plumbeous Vireo Shannon diversity  6.380021  8.808168  2.19502783  4.5059925  13.110344
+# 9 Plumbeous Vireo Simpson diversity  4.205689  4.438967  0.83133379  2.8095829   6.068351
 ```
 
 ##--------------------------------------------------------------
 
-#Extracting estimated N of parasite lineages
+# Extracting estimated N of parasite lineages
 
-##Gray vireo: Nest = 4.99, s.e.= 0.529, LCL = 4, UCL = 6.03
+## Bell's vireo: Nest = 3.92, s.e. 0.784, LCL = 3, UCL = 5.45
+
+## Gray vireo: Nest = 4.99, s.e.= 0.529, LCL = 4, UCL = 6.03
 
 ## Plumbeous vireo: Nest = 53.8, s.e.= 21.0, LCL = 14, UCL = 95.1
 
@@ -82,11 +76,13 @@ summary(iNEXT_output)
 asymptote_data <- iNEXT_output$AsyEst
 parasite_rich <- filter(asymptote_data, asymptote_data$Diversity == "Species richness")
 print(parasite_rich)
-#        Assemblage             Diversity                 Obs.Est.       s.e.           LCL             UCL
-# 1     Bell's Vireo        Species richness  3           3.916667      0.7576095        3.000000       5.401554 (removed)
-# 2     Gray Vireo          Species richness  4           4.99187       0.5294152        4              6.029505
-# 3     Plumbeous Vireo     Species richness  14          53.84677      23.3459606       14             99.604016
- write.csv(parasite_rich, "parasite_richness_iNEXT.csv")
+#        Assemblage        Diversity Observed Estimator       s.e.       LCL        UCL
+# 1    Bell's Vireo Species richness        3  3.916667  0.7841025  3.000000   5.453479
+# 2      Gray Vireo Species richness        4  4.991870  0.4376927  4.134008   5.849732
+# 3 Plumbeous Vireo Species richness       14 53.846774 24.2146815 14.000000 101.306678
+
+# Write out csv
+#write.csv(parasite_rich, "parasite_richness_iNEXT.csv")
 ```
 
 ## --------------------------------------------------------------
@@ -108,66 +104,76 @@ completeness_data <- iNEXT_output$iNextEst$coverage_based
 # View the extrapolated completeness data
 print(completeness_data)
 
-# # Filter for 95% completeness (SC >= 0.95)
-# sampling_effort_95 <- completeness_data[completeness_data$SC >= 0.95 & completeness_data$SC < 0.96, ]
 # Filter for 95-99% completeness (SC >= 0.95)
-sampling_effort_99 <- completeness_data[completeness_data$SC >= 0.95 & completeness_data$SC < 1, ]
+sampling_effort_95_99 <- completeness_data[completeness_data$SC >= 0.95 & completeness_data$SC < 1, ]
 
 #Add row IDs to manually select cut-offs for minimum samples needed to sample >95% parasite diversity
-sampling_effort_99$ID <- seq.int(nrow(sampling_effort_99))
-sampling_effort_99
-#        Assemblage        SC   m        Method Order.q        qD    qD.LCL    qD.UCL ID
-# 3       Gray Vireo 0.9567981  14   Rarefaction       0  1.808121  1.133980  2.482262  1 *****selected*****
-# 4       Gray Vireo 0.9658965  21   Rarefaction       0  2.081460  1.383410  2.779510  2
-# 5       Gray Vireo 0.9715033  27   Rarefaction       0  2.271209  1.583475  2.958944  3
-# 6       Gray Vireo 0.9761098  34   Rarefaction       0  2.455834  1.761179  3.150489  4
-# 7       Gray Vireo 0.9791705  41   Rarefaction       0  2.613140  1.907267  3.319013  5
-# 8       Gray Vireo 0.9811316  48   Rarefaction       0  2.752542  2.027731  3.477354  6
-# 9       Gray Vireo 0.9821988  54   Rarefaction       0  2.862859  2.121455  3.604262  7
-# 10      Gray Vireo 0.9829581  61   Rarefaction       0  2.984946  2.227061  3.742830  8
-# 11      Gray Vireo 0.9833762  68   Rarefaction       0  3.102834  2.331826  3.873843  9
-# 12      Gray Vireo 0.9835671  74   Rarefaction       0  3.202042  2.421435  3.982649 10
-# 13      Gray Vireo 0.9836765  81   Rarefaction       0  3.316693  2.525637  4.107750 11
-# 14      Gray Vireo 0.9837209  88   Rarefaction       0  3.430800  2.629042  4.232557 12
-# 15      Gray Vireo 0.9837357  95   Rarefaction       0  3.544699  2.731257  4.358141 13
-# 16      Gray Vireo 0.9837391 101   Rarefaction       0  3.642274  2.817634  4.466913 14
-# 17      Gray Vireo 0.9837398 108   Rarefaction       0  3.756098  2.916550  4.595645 15
-# 18      Gray Vireo 0.9837398 115   Rarefaction       0  3.869918  3.012316  4.727521 16
-# 19      Gray Vireo 0.9837398 117   Rarefaction       0  3.899224  3.030117  4.768332 17
-# 20      Gray Vireo 0.9840021 123      Observed       0  4.000000  3.115076  4.884924 18
-# 21      Gray Vireo 0.9842601 124 Extrapolation       0  4.015998  3.125558  4.906438 19
-# 22      Gray Vireo 0.9874647 138 Extrapolation       0  4.214680  3.251251  5.178110 20
-# 23      Gray Vireo 0.9901778 153 Extrapolation       0  4.382895  3.363262  5.402529 21
-# 24      Gray Vireo 0.9921776 167 Extrapolation       0  4.506880  3.453572  5.560187 22
-# 25      Gray Vireo 0.9938707 182 Extrapolation       0  4.611851  3.539703  5.683999 23
-# 26      Gray Vireo 0.9951186 196 Extrapolation       0  4.689221  3.600719  5.777723 24
-# 27      Gray Vireo 0.9961751 211 Extrapolation       0  4.754726  3.651145  5.858308 25
-# 28      Gray Vireo 0.9969538 225 Extrapolation       0  4.803007  3.687768  5.918247 26
-# 29      Gray Vireo 0.9976131 240 Extrapolation       0  4.843885  3.718460  5.969309 27
-# 30      Gray Vireo 0.9980991 254 Extrapolation       0  4.874014  3.740908  6.007120 28
-# 31      Gray Vireo 0.9985105 269 Extrapolation       0  4.899523  3.759797  6.039249 29
-# 32      Gray Vireo 0.9988138 283 Extrapolation       0  4.918324  3.773644  6.063004 30
-# 33      Gray Vireo 0.9990705 298 Extrapolation       0  4.934242  3.785308  6.083177 31
-# 34      Gray Vireo 0.9992598 312 Extrapolation       0  4.945975  3.793864  6.098086 32
-# 35      Gray Vireo 0.9994200 327 Extrapolation       0  4.955909  3.801077  6.110740 33
-# 36      Gray Vireo 0.9995381 341 Extrapolation       0  4.963230  3.806373  6.120087 34
-# 37      Gray Vireo 0.9996380 356 Extrapolation       0  4.969429  3.810838  6.128019 35
-# 38      Gray Vireo 0.9997117 370 Extrapolation       0  4.973998  3.814118  6.133878 36
-# 39      Gray Vireo 0.9997741 385 Extrapolation       0  4.977866  3.816885  6.138847 37
-# 40      Gray Vireo 0.9998230 400 Extrapolation       0  4.980897  3.819045  6.142749 38
-# 78 Plumbeous Vireo 0.9517678 364 Extrapolation       0 40.558813 11.961824 69.155803 39 *****selected*****
-# 79 Plumbeous Vireo 0.9548238 382 Extrapolation       0 41.400718 12.361257 70.440179 40
-# 80 Plumbeous Vireo 0.9576860 400 Extrapolation       0 42.189281 12.733538 71.645024 41
-host_sampling_effort_95_99 <- subset(sampling_effort_99, 
-                                     sampling_effort_99$ID == "1" | 
-                                     #sampling_effort_99$ID == "11" | (removed)
-                                     sampling_effort_99$ID == "39")
-print(host_sampling_effort_95_99)
-#         Assemblage        SC   m        Method Order.q        qD    qD.LCL    qD.UCL ID
-# 3       Gray Vireo 0.9567981  14   Rarefaction       0  1.808121  1.175865  2.440376  1
-# 78 Plumbeous Vireo 0.9517678 364 Extrapolation       0 40.558813 11.310413 69.807214 39
+sampling_effort_95_99$ID <- seq.int(nrow(sampling_effort_95_99))
+sampling_effort_95_99
+#          Assemblage        SC   m        Method Order.q        qD    qD.LCL    qD.UCL ID
+# 8      Bell's Vireo 0.9957759  33 Extrapolation       0  3.889210  1.828794  5.949626  1 *** selected ***
+# 9      Bell's Vireo 0.9998505  53 Extrapolation       0  3.915695  1.814131  6.017258  2
+# 10     Bell's Vireo 0.9999955  74 Extrapolation       0  3.916638  1.820713  6.012562  3
+# 11     Bell's Vireo 0.9999998  94 Extrapolation       0  3.916666  1.806228  6.027103  4
+# 12     Bell's Vireo 1.0000000 114 Extrapolation       0  3.916667  1.794200  6.039134  5
+# 13     Bell's Vireo 1.0000000 135 Extrapolation       0  3.916667  1.789519  6.043814  6
+# 14     Bell's Vireo 1.0000000 155 Extrapolation       0  3.916667  1.781384  6.051950  7
+# 15     Bell's Vireo 1.0000000 175 Extrapolation       0  3.916667  1.788886  6.044447  8
+# 16     Bell's Vireo 1.0000000 196 Extrapolation       0  3.916667  1.758539  6.074795  9
+# 17     Bell's Vireo 1.0000000 216 Extrapolation       0  3.916667  2.057145  5.776189 10
+# 310      Gray Vireo 0.9567981  14   Rarefaction       0  1.808121  1.149348  2.466893 11 *** selected ***
+# 41       Gray Vireo 0.9658965  21   Rarefaction       0  2.081460  1.478640  2.684280 12
+# 5        Gray Vireo 0.9715033  27   Rarefaction       0  2.271209  1.706765  2.835653 13
+# 61       Gray Vireo 0.9761098  34   Rarefaction       0  2.455834  1.907916  3.003752 14
+# 71       Gray Vireo 0.9791705  41   Rarefaction       0  2.613140  2.070036  3.156243 15
+# 81       Gray Vireo 0.9811316  48   Rarefaction       0  2.752542  2.210663  3.294422 16
+# 91       Gray Vireo 0.9821988  54   Rarefaction       0  2.862859  2.321147  3.404570 17
+# 101      Gray Vireo 0.9829581  61   Rarefaction       0  2.984946  2.443232  3.526659 18
+# 111      Gray Vireo 0.9833762  68   Rarefaction       0  3.102834  2.561112  3.644557 19
+# 121      Gray Vireo 0.9835671  74   Rarefaction       0  3.202042  2.660276  3.743808 20
+# 131      Gray Vireo 0.9836765  81   Rarefaction       0  3.316693  2.774927  3.858460 21
+# 141      Gray Vireo 0.9837209  88   Rarefaction       0  3.430800  2.889028  3.972572 22
+# 151      Gray Vireo 0.9837357  95   Rarefaction       0  3.544699  3.002924  4.086474 23
+# 161      Gray Vireo 0.9837391 101   Rarefaction       0  3.642274  3.100499  4.184049 24
+# 171      Gray Vireo 0.9837398 108   Rarefaction       0  3.756098  3.214322  4.297873 25
+# 181      Gray Vireo 0.9837398 115   Rarefaction       0  3.869918  3.328143  4.411694 26
+# 19       Gray Vireo 0.9837398 117   Rarefaction       0  3.899224  3.357449  4.441000 27
+# 20       Gray Vireo 0.9840021 123      Observed       0  4.000000  3.458205  4.541795 28
+# 21       Gray Vireo 0.9842601 124 Extrapolation       0  4.015998  3.474181  4.557815 29
+# 22       Gray Vireo 0.9874647 138 Extrapolation       0  4.214680  3.673548  4.755812 30
+# 23       Gray Vireo 0.9901778 153 Extrapolation       0  4.382895  3.850049  4.915742 31
+# 24       Gray Vireo 0.9921776 167 Extrapolation       0  4.506880  3.961861  5.051898 32
+# 25       Gray Vireo 0.9938707 182 Extrapolation       0  4.611851  4.073582  5.150119 33
+# 26       Gray Vireo 0.9951186 196 Extrapolation       0  4.689221  4.152848  5.225594 34
+# 27       Gray Vireo 0.9961751 211 Extrapolation       0  4.754726  4.218772  5.290680 35
+# 28       Gray Vireo 0.9969538 225 Extrapolation       0  4.803007  4.267285  5.338730 36
+# 29       Gray Vireo 0.9976131 240 Extrapolation       0  4.843885  4.308522  5.379248 37
+# 30       Gray Vireo 0.9980991 254 Extrapolation       0  4.874014  4.339105  5.408922 38
+# 31       Gray Vireo 0.9985105 269 Extrapolation       0  4.899523  4.365171  5.433874 39
+# 32       Gray Vireo 0.9988138 283 Extrapolation       0  4.918324  4.384498  5.452151 40
+# 33       Gray Vireo 0.9990705 298 Extrapolation       0  4.934242  4.400937  5.467548 41
+# 34       Gray Vireo 0.9992598 312 Extrapolation       0  4.945975  4.413103  5.478847 42
+# 35       Gray Vireo 0.9994200 327 Extrapolation       0  4.955909  4.423430  5.488387 43
+# 36       Gray Vireo 0.9995381 341 Extrapolation       0  4.963230  4.431057  5.495403 44
+# 37       Gray Vireo 0.9996380 356 Extrapolation       0  4.969429  4.437521  5.501336 45
+# 38       Gray Vireo 0.9997117 370 Extrapolation       0  4.973998  4.442290  5.505706 46
+# 39       Gray Vireo 0.9997741 385 Extrapolation       0  4.977866  4.446330  5.509403 47
+# 40       Gray Vireo 0.9998230 400 Extrapolation       0  4.980897  4.449494  5.512301 48
+# 381 Plumbeous Vireo 0.9517678 364 Extrapolation       0 40.558813 10.911888 70.205739 49 *** selected ***
+# 391 Plumbeous Vireo 0.9548238 382 Extrapolation       0 41.400718 11.271701 71.529734 50
+# 401 Plumbeous Vireo 0.9576860 400 Extrapolation       0 42.189281 11.603586 72.774975 51
 
- write.csv(host_sampling_effort_95_99, "host_sampling_effort_95.csv")
+host_sampling_effort_95_99 <- subset(sampling_effort_95_99, 
+                                     sampling_effort_95_99$ID == "1" | 
+                                     sampling_effort_95_99$ID == "11" |
+                                     sampling_effort_95_99$ID == "49")
+print(host_sampling_effort_95_99)
+#          Assemblage        SC   m        Method Order.q        qD    qD.LCL    qD.UCL ID
+# 8      Bell's Vireo 0.9957759  33 Extrapolation       0  3.889210  1.828794  5.949626  1
+# 310      Gray Vireo 0.9567981  14   Rarefaction       0  1.808121  1.149348  2.466893 11
+# 381 Plumbeous Vireo 0.9517678 364 Extrapolation       0 40.558813 10.911888 70.205739 49
+
+write.csv(host_sampling_effort_95_99, "host_sampling_effort_95_99.csv")
 ```
 
 #Visualization
@@ -176,7 +182,7 @@ print(host_sampling_effort_95_99)
 #PLOT RAREFACTION CURVES--------------------------------------------
 # Define custom colors for each host species; #slightly darker than original colors
 custom_colors <- c(
- # "Bell's Vireo" = "#E3C50F",  
+  "Bell's Vireo" = "#E3C50F",  
   "Gray Vireo" = "#8A8A8A",   
   "Plumbeous Vireo" = "#65A2E5" 
 )
@@ -202,7 +208,7 @@ p <- ggiNEXT(iNEXT_output, type = 1, se=TRUE) +
                      breaks = scales::pretty_breaks(n = 10))  + 
   scale_y_continuous(limits=c(0,80), #set axis limits
                      expand = c(0,0), #removes within-plot margin
-                     breaks = scales::pretty_breaks(n = 5)) + #set number of axis ticks
+                     breaks = scales::pretty_breaks(n = 10)) + #set number of axis ticks
   theme_bw() + 
   theme(plot.title.position = "plot", plot.title = element_text(face="bold")) +
   theme(legend.position = "none") +
@@ -216,5 +222,5 @@ p <- ggiNEXT(iNEXT_output, type = 1, se=TRUE) +
   theme(panel.background = element_blank()) +
   theme(legend.position = "blank")
 plot(p)
-# ggsave(p, filename="Fig2_rarefaction_byHost_V2.pdf", bg="transparent", height=6, width=8, units="in")
+ggsave(p, filename="Fig2.pdf", bg="transparent", height=6, width=8, units="in")
 ```

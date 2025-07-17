@@ -4,7 +4,7 @@ author: Dani Wiley
 date:   last-modified
 editor: visual
 description: |
-  Explores the data, summarizing singular relationships between independent and dependent variables and running simple hypothesis tests to understand patterns in the data. Contact dlfwiley@gmail.com with any questions or requests for more information.
+  Explores the data, summarizing relationships between independent and dependent variables and running additive model selection to understand trends and correlations in the data. Contact dlfwiley@gmail.com with any questions or requests for more information.
 format:
   html:
     theme:            litera
@@ -24,202 +24,117 @@ editor_options:
   chunk_output_type: console
 ---
 
-##------------------------------------------
-
-# Patterns in the data summary
-
-In pt 1 and pt 2 of the VirMal_statistical_analyses.qmd, we explore the data in various ways, depending on the type of variables and relationships we are interested in testing. Overall summaries are listed here for convenience.
-
-Pt 2 (this document) covers analyses relating to infection intensity (parasitemia).
-
-1\) T-tests (categorical dependent variables with no more than 2 categories and continuous independent variable)
-
--   **Species v. infection intensity**
-
-    -   No significant difference in mean parasitemia between GRVI & PLVI
-
--   **precipPC2 v. infection intensity**
-
-    -   No significant difference in mean parasitemia between PC2=0 & PC2=1
-
-2\) Linear regression (continuous independent variable and continuous dependent variable)
-
--   **Elevation v. infection intensity**
-
-    -   No signif correlation in infection intensity and elevation overall or within each species.
-
-3\) Analysis of Variance (categorical dependent variables with at least 3 or more categories and continuous independent variable)
-
--   **tempPC1 v. infection intensity**
-
-    -   No signif correlation in infection intensity and tempPC1
-
--   **tempPC2 v. infection intensity**
-
-    -   No signif correlation in infection intensity and tempPC2.
-
--   **precipPC1 v. infection intensity**
-
-    -   No signif correlation in infection intensity and precipPC1.
+Code last updated: 7/17/2025
 
 # Load libraries
 
 ```{r}
 library(dplyr)
-library(tidyverse)
 library(car)
 library(GGally)
 library(stats)
 library(effsize)
-library(yhat)
-library(gplots)
 library(ggplot2)
-library(arm) 
-library(ggfortify)
 library(erikmisc)
 library(rcompanion)
 library(binom)
-library(ggeasy) #To easily remove y-axis or x-axis only
+library(performance)
+library(boot)
+library(MuMIn)
+library(patchwork)
+library(ggeasy)
+library(ggfortify)
+library(AICcmodavg)
 ```
 
 #Load intensity data
 
-Code last updated 3/12/2025
+Code last updated 6/23/2025
 
 ```{r}
-# As of 21 Novemeber, 2024, these datasets are final. This version includes all 19 BioClim variables and 1 elevation variable. Micropscopy data verified in February of 2025 by DLFW.
+# As of 21 Novemeber, 2024, these datasets are final. This version includes all 19 BioClim variables and 1 elevation variable. Microscopy data verified in February of 2025 by DLFW.
 
 #Infection intensity data sets:---------------------------------------------------
 
 setwd("/Users/danie/Desktop/BarrowLab/Projects/VireoMalaria/FigShare/")
 #Haemoproteous intensity data set:
-df_i_hp <- read.csv("Host_Sample_Dataset.csv")
+df <- read.csv("Host_Sample_Dataset.csv")
 #change response variable to simpler name:
-names(df_i_hp)[names(df_i_hp) == "micro_HP_parasitemia_percent"] <- "HP_parasitemia"
-names(df_i_hp)[names(df_i_hp) == "micro_total_parasitemia_percent"] <- "All_parasitemia"
+names(df)[names(df) == "micro_HP_parasitemia_percent"] <- "HP_parasitemia"
+names(df)[names(df) == "micro_total_parasitemia_percent"] <- "All_parasitemia"
 #Hp intensity dataset: contains all individuals screened for Hp
-df_i_hp <- filter(df_i_hp, !is.na(df_i_hp$HP_parasitemia)) #81
-df_i_hp <- filter(df_i_hp, df_i_hp$HP_parasitemia >0) #81
+df <- filter(df, !is.na(df$HP_parasitemia)) #81
+df <- filter(df, df$HP_parasitemia >0) #81
 
 #CLASSIFICATION OF VARIABLES ------------------------
 #Making sure our variables are correctly classified.
-df_i_hp$common_name       <- as.factor(df_i_hp$common_name)
-df_i_hp$county            <- as.factor(df_i_hp$county)
-df_i_hp$coll_date         <- as.factor(df_i_hp$Haem_01)
-df_i_hp$coll_year         <- as.factor(df_i_hp$coll_year)
-df_i_hp$analysis_lat      <- as.integer(df_i_hp$analysis_lat)
-df_i_hp$tissue_type       <- as.factor(df_i_hp$tissue_type)
-df_i_hp$Haem_01           <- as.factor(df_i_hp$Haem_01)
-df_i_hp$Plas_01           <- as.factor(df_i_hp$Plas_01)
-df_i_hp$HP_parasitemia    <- as.numeric(df_i_hp$HP_parasitemia)
-df_i_hp$All_parasitemia   <- as.numeric(df_i_hp$All_parasitemia)
-df_i_hp$coinfection_01    <- as.factor(df_i_hp$coinfection_01)
-df_i_hp$analysis_elev     <- as.integer(df_i_hp$analysis_elev)
-df_i_hp$tempPC1           <- as.integer(df_i_hp$tempPC1)
-df_i_hp$tempPC2           <- as.integer(df_i_hp$tempPC2)
-df_i_hp$precipPC1         <- as.integer(df_i_hp$precipPC1)
-df_i_hp$precipPC2         <- as.integer(df_i_hp$precipPC2)
-df_i_hp$coinfection_01    <- as.factor(df_i_hp$coinfection_01)
-df_i_hp$H_haplo1          <- as.factor(df_i_hp$H_haplo1)
-str(df_i_hp)
+df$common_name       <- as.factor(df$common_name)
+df$county            <- as.factor(df$county)
+df$coll_date         <- as.factor(df$Haem_01)
+df$coll_year         <- as.factor(df$coll_year)
+df$tissue_type       <- as.factor(df$tissue_type)
+df$Haem_01           <- as.factor(df$Haem_01)
+df$Plas_01           <- as.factor(df$Plas_01)
+df$coinfection_01    <- as.factor(df$coinfection_01)
+df$coinfection_01    <- as.factor(df$coinfection_01)
+df$H_haplo1          <- as.factor(df$H_haplo1)
+str(df)
 
 #How many samples were screened
-table(df_i_hp$common_name, df_i_hp$micro_pos_01)
+table(df$common_name, df$micro_pos_01)
      # Gray Vireo Plumbeous Vireo 
      #         53              28 
 
 #Create dataset to examine all parasites (intracellular and free-floating)
-df_i_all <- df_i_hp
+df_all <- df
 ```
 
-#Summary stats
+# Raw data summary stats
 
 ```{r}
 #Prep data:
-df_i_GRVI <- subset(df_i_hp, df_i_hp$common_name == "Gray Vireo") #53
-df_i_PLVI <- subset(df_i_hp, df_i_hp$common_name == "Plumbeous Vireo") #28
+df_GRVI <- subset(df, df$common_name == "gray vireo") #53
+df_PLVI <- subset(df, df$common_name == "plumbeous vireo") #28
 
 #PARASITEMIA ACROSS ALL SAMPLES:-----------------
-summary(df_i_hp$HP_parasitemia)
+summary(df$HP_parasitemia)
  #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
  # 0.0300  0.4000  0.8000  0.9269  1.1300  4.5000 
-summary(df_i_hp$All_parasitemia)
+summary(df$All_parasitemia)
  #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
  # 0.0600  0.4400  0.8800  0.9998  1.2600  4.5300 
 
 #PARASITEMIA ACROSS GRAY VIREOS:-----------------
-summary(df_i_GRVI$HP_parasitemia)
+summary(df_GRVI$HP_parasitemia)
   #  Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
   # 0.030   0.410   0.800   1.001   1.150   4.500
-summary(df_i_GRVI$All_parasitemia)
+summary(df_GRVI$All_parasitemia)
   #  Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
   # 0.090   0.550   0.900   1.113   1.410   4.530
 
 #PARASITEMIA ACROSS PLUMBEOUS VIREOS:------------
-summary(df_i_PLVI$HP_parasitemia)
+summary(df_PLVI$HP_parasitemia)
  #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
  # 0.0600  0.3225  0.7550  0.7861  1.0550  2.5200 
-summary(df_i_PLVI$All_parasitemia)
+summary(df_PLVI$All_parasitemia)
  #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
  # 0.0600  0.3225  0.7550  0.7861  1.0550  2.5200
 ```
 
 Check for any significant difference in "HP" and "All parasitemia" datasets.
-
-```{r}
-shapiro.test(df_i_hp$HP_parasitemia)
-# 	Shapiro-Wilk normality test
-# 
-# data:  df_i_hp$HP_parasitemia
-# W = 0.76958, p-value = 6.15e-10
-
-shapiro.test(df_i_all$All_parasitemia)
-# 	Shapiro-Wilk normality test
-# 
-# data:  df_i_all$All_parasitemia
-# W = 0.7986, p-value = 3.712e-09
-#BOTH FAIL DUE TO OUTLIERS. BUT BOTH DATASETS MIRROR EACH OTHER IN THIS WAY, SO MOVE FORWARD WITH PARAMETRIC T-TEST.
-
-var.test(df_i_hp$HP_parasitemia, df_i_hp$All_parasitemia)
-# 	F test to compare two variances
-# 
-# data:  df_i_hp$HP_parasitemia and df_i_hp$All_parasitemia
-# F = 0.9948, num df = 80, denom df = 80, p-value = 0.9815
-# alternative hypothesis: true ratio of variances is not equal to 1
-# 95 percent confidence interval:
-#  0.6397945 1.5468042
-# sample estimates:
-# ratio of variances 
-#          0.9948049 
-#PASSSED - EQUAL VARIANCES
-
-t.test(df_i_hp$HP_parasitemia, df_i_hp$All_parasitemia, var.equal = TRUE)
-# 	Two Sample t-test
-# 
-# data:  df_i_hp$HP_parasitemia and df_i_hp$All_parasitemia
-# t = -0.5722, df = 160, p-value = 0.568
-# alternative hypothesis: true difference in means is not equal to 0
-# 95 percent confidence interval:
-#  -0.3242381  0.1785591
-# sample estimates:
-# mean of x mean of y 
-# 0.9269136 0.9997531 
-# NO SIGNIFICANT DIFFERENCE IN MEANS BETWEEN TWO GROUPS. 
-```
+We found free-floating, potential merozoites or other life stages in many of the gray vireo blood smears. We cannot determine whether this is indicative of biological significance (e.g. life cycle of the parasite) or an artifact of smear preparation such as leaving the slide out for too long before fixing which can cause lysis of red blood cells, thus freeing once contained haemosporidian parasites. We want to determine whether there is a significant difference in the total count of haemosporidians ("All parasitemia") or just the individuals within red blood cells (definitive infections; "HP"). Therefore we must first check to see if by using HP if we'll be contradicting or missing any pattern present in the "All parasitemia" dataset. 
 
 # Confidence Intervals
 
 ```{r}
 set.seed(123)
-library(boot)
-
 # Define function to calculate mean
-mean_parasitemia <- function(data, indices) {
-  return(mean(data[indices]))  
+mean_parasitemia <- function(df, HP_parasitemia) {
+  return(mean(df[HP_parasitemia]))  
 }
 
 # GRVI Parasitemia dataset
-parasitemia_values <- df_i_GRVI$HP_parasitemia
+parasitemia_values <- df_GRVI$HP_parasitemia
 
 # Bootstrap with 1000 resamples
 boot_results <- boot(parasitemia_values, mean_parasitemia, R = 1000)
@@ -234,16 +149,16 @@ boot.ci(boot_results, type = "perc")
 # 
 # Intervals : 
 # Level     Percentile     
-# 95%   ( 0.775,  1.245 )  
+# 95%   ( 0.782,  1.267 )  
 # Calculations and Intervals on Original Scale
-#--------------------------------------------------------------
+#----------------
 # Define function to calculate mean
 mean_parasitemia <- function(data, indices) {
   return(mean(data[indices]))  
 }
 
-# GRVI Parasitemia dataset
-parasitemia_values <- df_i_PLVI$HP_parasitemia
+# PLVI Parasitemia dataset
+parasitemia_values <- df_PLVI$HP_parasitemia
 
 # Bootstrap with 1000 resamples
 boot_results <- boot(parasitemia_values, mean_parasitemia, R = 1000)
@@ -258,13 +173,14 @@ boot.ci(boot_results, type = "perc")
 # 
 # Intervals : 
 # Level     Percentile     
-# 95%   ( 0.5897,  1.0011 )  
+# 95%   ( 0.5843,  1.0128 )  
 # Calculations and Intervals on Original Scale
 ```
 
 # Visualization
 
 Figure 1b
+
 ```{r}
 #Visualize dataset
 #Set colors for pathogen comparisons
@@ -272,7 +188,7 @@ Hp_c <- c("#A0A0A0","#89B8EB")
 
 #Gray vireo boxplot for distribution of parasitemia:
 Hp_SQ_GRVI_box <- ggplot(
-  data = df_i_GRVI, mapping = aes(
+  data = df_GRVI, mapping = aes(
     x =  common_name, y = HP_parasitemia , 
     colour =  HP_parasitemia, na.rm = TRUE)) +
   geom_boxplot(outlier.color = "white", outlier.fill = "white", 
@@ -309,7 +225,7 @@ Hp_SQ_GRVI_box
 
 #Plumbeous vireo boxplot for distribution of parasitemia:
 Hp_SQ_PLVI_box <- ggplot(
-  data = df_i_PLVI, mapping = aes(
+  data = df_PLVI, mapping = aes(
     x =  common_name, y = HP_parasitemia , 
     colour =  HP_parasitemia, na.rm = TRUE)) +
   geom_boxplot(outlier.color = "white", outlier.fill = "white", 
@@ -358,7 +274,7 @@ plot(Fig1_Boxplots_GRVIPLVI_HP_parasitemia)
 #---------------------------------------------------------------------------
 #Gray vireo boxplot for distribution of all parasitemia:
 All_SQ_GRVI_box <- ggplot(
-  data = df_i_GRVI, mapping = aes(
+  data = df_GRVI, mapping = aes(
     x =  common_name, y = HP_parasitemia , 
     colour =  HP_parasitemia, na.rm = TRUE)) +
   geom_boxplot(outlier.color = "white", outlier.fill = "white", 
@@ -395,7 +311,7 @@ All_SQ_GRVI_box
 
 #Plumbeous vireo boxplot for distribution of parasitemia:
 All_SQ_PLVI_box <- ggplot(
-  data = df_i_PLVI, mapping = aes(
+  data = df_PLVI, mapping = aes(
     x =  common_name, y = HP_parasitemia , 
     colour =  HP_parasitemia, na.rm = TRUE)) +
   geom_boxplot(outlier.color = "white", outlier.fill = "white", 
@@ -443,111 +359,182 @@ plot(FigS2_Boxplots_GRVIPLVI_All_parasitemia)
 ```
 
 
-##------------------------------------------
+```{r}
+#After removing outliers that violate normal distribution 
+shapiro.test(df$HP_parasitemia)
+# 	Shapiro-Wilk normality test
+# 
+# data:  df$HP_parasitemia
+# W = 0.96959, p-value = 0.07131
+shapiro.test(df_all$All_parasitemia)
+# 	Shapiro-Wilk normality test
+# 
+# data:  df_all$All_parasitemia
+# W = 0.97303, p-value = 0.1142
+
+#Check variances
+var.test(df$HP_parasitemia, df_all$All_parasitemia, alternative = "two.sided")
+# 	F test to compare two variances
+# 
+# data:  df$HP_parasitemia and df_all$All_parasitemia
+# F = 0.87401, num df = 73, denom df = 73, p-value = 0.5666
+# alternative hypothesis: true ratio of variances is not equal to 1
+# 95 percent confidence interval:
+#  0.5504298 1.3878198
+# sample estimates:
+# ratio of variances 
+#          0.8740122 
+#PASSED - EQUAL VARIANCES
+
+Hp_All_ttest.int <-t.test(df$HP_parasitemia, df_all$All_parasitemia, alternative = "two.sided", var.equal = TRUE)
+Hp_All_ttest.int
+# 	Two Sample t-test
+# 
+# data:  df$HP_parasitemia and df_all$All_parasitemia
+# t = -1.0856, df = 146, p-value = 0.2795
+# alternative hypothesis: true difference in means is not equal to 0
+# 95 percent confidence interval:
+#  -0.21992792  0.06398197
+# sample estimates:
+# mean of x mean of y 
+# 0.7308108 0.8087838 
+# NOT SIGNIFICANTLY DIFFERENT
+
+#Calculate effect size using effsize package
+cohen.d(df$HP_parasitemia, df_all$All_parasitemia, hedges.correction = TRUE)
+# Hedges's g
+# 
+# g estimate: -0.2121628 (small)
+# 95 percent confidence interval:
+#      lower      upper 
+# -0.5352189  0.1108933 
+```
+
+
+#------------------------------------------
 
 # PT 2 START: Infection intensity
 
-
-# Removing HP outliers
+# Transforming and removing HP outliers
 
 ```{r}
-plotNormalHistogram(df_i_hp$HP_parasitemia) 
-qqPlot(df_i_hp$HP_parasitemia) 
+df$log_HP_parasitemia <- log1p(df$HP_parasitemia)
+df_all$log_All_parasitemia <- log1p(df_all$All_parasitemia)
+shapiro.test(df$log_HP_parasitemia)
+# 	Shapiro-Wilk normality test
+# 
+# data:  df$log_HP_parasitemia
+# W = 0.94056, p-value = 0.0009507
+
+shapiro.test(df_all$log_All_parasitemia)
+# 	Shapiro-Wilk normality test
+# 
+# data:  df_all$log_All_parasitemia
+# W = 0.95584, p-value = 0.007064
+# BOTH FAIL, BUT LESS-SO AFTER LOG TRANSFORMING
+
+qqPlot(df$log_HP_parasitemia)
+# not normally distributed - outliers above 4% parasitemia - need to remove before running statistical analyses
+```
+
+```{r}
+plotNormalHistogram(df$log_HP_parasitemia) 
+qqPlot(df$log_HP_parasitemia) 
 
 #outlier 62 and 20 (ROW ID 76, GRVI 272132427 & ROW ID 225, GRVI 272132642)
 #Let's remove those, as they're multidudes higher than others.
 
-df_i_hp <- filter(df_i_hp, df_i_hp$HP_parasitemia < 2) #74
-#outlier 47 (Row ID 136) and 2 (ROW ID 30) should be examined after we run some linear analyses to test their influence on our relationships. 
+df <- filter(df, df$HP_parasitemia < 4) #79 removes two GRVI samples
+# We see GRVI 272132629 at 2.68% is above 0.12 Cook's distance, with high leverage. We should remove this individual too. 
 
-df.i <- lm(HP_parasitemia~1, data=df_i_hp)
+df.i <- lm(log_HP_parasitemia~1, data=df)
 e_plot_lm_diagnostics(df.i)
 
-table(df_i_hp$common_name)
-     # Gray Vireo Plumbeous Vireo 
-     #         47              27 
+table(df$common_name)
+     # gray vireo plumbeous vireo 
+     #         51              28 
 #Prep data:
-df_i_GRVI <- subset(df_i_hp, df_i_hp$common_name == "Gray Vireo") #47
-df_i_PLVI <- subset(df_i_hp, df_i_hp$common_name == "Plumbeous Vireo") #27
+df_GRVI <- subset(df, df$common_name == "gray vireo") #51
+df_PLVI <- subset(df, df$common_name == "plumbeous vireo") #28
 ```
 
-We are choosing to remove outliers instead of log transform to catch general patterns and keep interpretation simple. We lose 4 samples in this way. 
+We are choosing to remove outliers instead of log transform to catch general patterns and keep interpretation simple. We lose 7 samples in this way.
 
-Final HP data set has n = 74; 47 GRVI & 27 PLVI
+Final HP data set has n = 79; 51 GRVI & 28 PLVI
 
-# Removing All outliers
 
 ```{r}
-plotNormalHistogram(df_i_all$All_parasitemia) 
-qqPlot(df_i_all$All_parasitemia) 
+plotNormalHistogram(df_all$log_All_parasitemia) 
+qqPlot(df_all$log_All_parasitemia) 
 #outlier 62 and 20 (ROW ID 76, GRVI 272132427 & ROW ID 225, GRVI 272132642)
 #Let's remove those, as they're multidudes higher than others.
 
-df_i_all <- filter(df_i_all, df_i_all$HP_parasitemia < 2.2) #75
+df_all <- filter(df_all, df_all$HP_parasitemia < 4) #79
 #outlier 47 (Row ID 136) and 2 (ROW ID 30) should be examined after we run some linear analyses to test their influence on our relationships. 
 
-df.all.i <- lm(HP_parasitemia~1, data=df_i_all)
+df.all.i <- lm(log_All_parasitemia~1, data=df_all)
 e_plot_lm_diagnostics(df.all.i)
 
-table(df_i_all$common_name)
-     # Gray Vireo Plumbeous Vireo 
-     #         48              27 
+table(df_all$common_name)
+     # gray vireo plumbeous vireo 
+     #         51              28
 ```
 
-No transformation will help.
+No further transformation needewd.
 
-Final All parasitemia data set has n = 75; GRVI 48 & 27 PLVI
+Final All parasitemia data set has n = 79; GRVI 51 & 28 PLVI
+
 # ------------------------------------------
 
-# HP-All v. intensity Not significant T-test (p-value = 0.195, g = -0.212)
+# HP-All v. intensity: Not significant T-test (p-value = 0.279, g = -0.212)
 
-To decide which measure to use as our response variable for parasitemia (HP - only intracellular parasites found, or All - intracellular + any free-floating suspected HP), we need multiple lines of evidence.
+To decide which measure to use as our response variable for parasitemia (HP - only intercellular parasites found, or All - intercellular + any free-floating suspected HP), we need multiple lines of evidence.
 
 First, we need to know if they significantly differ from one another. In other words, our null hypothesis here is HP and All mean infection intensity across all birds screened in our dataset will not significantly differ.
 
 ```{r}
 #After removing outliers that violate normal distribution 
-shapiro.test(df_i_hp$HP_parasitemia)
+shapiro.test(df$log_HP_parasitemia)
 # 	Shapiro-Wilk normality test
 # 
-# data:  df_i_hp$HP_parasitemia
-# W = 0.96959, p-value = 0.07131
-shapiro.test(df_i_all$All_parasitemia)
+# data:  df$log_HP_parasitemia
+# W = 0.97326, p-value = 0.09554
+shapiro.test(df_all$log_All_parasitemia)
 # 	Shapiro-Wilk normality test
 # 
-# data:  df_i_all$All_parasitemia
-# W = 0.97236, p-value = 0.0998
-
+# data:  df_all$log_All_parasitemia
+# W = 0.98113, p-value = 0.2933
+# BOTH PASSED
 #Check variances
-var.test(df_i_hp$HP_parasitemia, df_i_all$All_parasitemia, alternative = "two.sided")
+var.test(df$log_HP_parasitemia, df_all$log_All_parasitemia, alternative = "two.sided")
 # 	F test to compare two variances
 # 
-# data:  df_i_hp$HP_parasitemia and df_i_all$All_parasitemia
-# F = 0.79278, num df = 73, denom df = 74, p-value = 0.3221
+# data:  df$log_HP_parasitemia and df_all$log_All_parasitemia
+# F = 0.98743, num df = 78, denom df = 78, p-value = 0.9556
 # alternative hypothesis: true ratio of variances is not equal to 1
 # 95 percent confidence interval:
-#  0.5002457 1.2572866
+#  0.6314402 1.5441250
 # sample estimates:
 # ratio of variances 
-#          0.7927754  
+#          0.9874323 
 #PASSED - EQUAL VARIANCES
 
-Hp_All_ttest.int <-t.test(df_i_hp$HP_parasitemia, df_i_all$All_parasitemia, alternative = "two.sided", var.equal = TRUE)
+Hp_All_ttest.int <-t.test(df$log_HP_parasitemia, df_all$log_All_parasitemia, alternative = "two.sided", var.equal = TRUE)
 Hp_All_ttest.int
 # 	Two Sample t-test
 # 
-# data:  df_i_hp$HP_parasitemia and df_i_all$All_parasitemia
-# t = -1.3015, df = 147, p-value = 0.1951
+# data:  df$log_HP_parasitemia and df_all$log_All_parasitemia
+# t = -0.84651, df = 156, p-value = 0.3986
 # alternative hypothesis: true difference in means is not equal to 0
 # 95 percent confidence interval:
-#  -0.24106897  0.04962392
+#  -0.13242774  0.05297365
 # sample estimates:
 # mean of x mean of y 
-# 0.7308108 0.8265333 
+# 0.5636305 0.6033575 
 # NOT SIGNIFICANTLY DIFFERENT
 
 #Calculate effect size using effsize package
-cohen.d(df_i_hp$HP_parasitemia, df_i_all$All_parasitemia, hedges.correction = TRUE)
+cohen.d(df$log_HP_parasitemia, df_all$All_parasitemia, hedges.correction = TRUE)
 # Hedges's g
 # 
 # g estimate: -0.2121628 (small)
@@ -557,154 +544,170 @@ cohen.d(df_i_hp$HP_parasitemia, df_i_all$All_parasitemia, hedges.correction = TR
 ```
 
 We accept the null hypothesis that HP parasitemia and All parasitemia mean distributions are not significantly different.
+
 # ------------------------------------------
 
-# Species v. intensity Not significant T-test (p-value = 0.891, g = 0.033)
+# Species v. intensity: Not significant T-test (p-value = 0.514, g = 0.153)
 
 HP parasitemia only:
 
 ```{r}
 #Prep data:
-df_i_GRVI <- subset(df_i_hp, df_i_hp$common_name == "Gray Vireo") #47
-df_i_PLVI <- subset(df_i_hp, df_i_hp$common_name == "Plumbeous Vireo") #27
-shapiro.test(df_i_GRVI$HP_parasitemia)
+df_GRVI <- subset(df, df$common_name == "gray vireo") #51
+df_PLVI <- subset(df, df$common_name == "plumbeous vireo") #28
+shapiro.test(df_GRVI$log_HP_parasitemia)
 # 	Shapiro-Wilk normality test
 # 
-# data:  df_i_GRVI$HP_parasitemia
-# W = 0.97349, p-value = 0.3575
+# data:  df_GRVI$log_HP_parasitemia
+# W = 0.97102, p-value = 0.2438
 # PASSED - NORMAL DISTRIBUTION
 
-shapiro.test(df_i_PLVI$HP_parasitemia)
+shapiro.test(df_PLVI$log_HP_parasitemia)
 # 	Shapiro-Wilk normality test
 # 
-# data:  df_i_PLVI$HP_parasitemia
-# W = 0.95058, p-value = 0.2214
+# data:  df_PLVI$log_HP_parasitemia
+# W = 0.96312, p-value = 0.4122
 #PASSED - NORMAL DISTRIBUTION
 
 #Check variances
-var.test(df_i_GRVI$HP_parasitemia, df_i_PLVI$HP_parasitemia, alternative = "two.sided")
+var.test(df_GRVI$log_HP_parasitemia, df_PLVI$log_HP_parasitemia, alternative = "two.sided")
 # 	F test to compare two variances
 # 
-# data:  df_i_GRVI$HP_parasitemia and df_i_PLVI$HP_parasitemia
-# F = 0.71775, num df = 46, denom df = 26, p-value = 0.3203
+# data:  df_GRVI$log_HP_parasitemia and df_PLVI$log_HP_parasitemia
+# F = 0.9079, num df = 50, denom df = 27, p-value = 0.7495
 # alternative hypothesis: true ratio of variances is not equal to 1
 # 95 percent confidence interval:
-#  0.3472455 1.3873676
+#  0.4474009 1.7208991
 # sample estimates:
 # ratio of variances 
-#          0.7177497 
+#          0.9078966 
 #PASSED - EQUAL VARIANCES
 
-HpSp_ttest.int <-t.test(HP_parasitemia ~ common_name, data = df_i_hp, alternative = "two.sided", var.equal = TRUE)
+HpSp_ttest.int <-t.test(log_HP_parasitemia ~ common_name, data = df, alternative = "two.sided", var.equal = TRUE)
 HpSp_ttest.int
 # 	Two Sample t-test
 # 
-# data:  HP_parasitemia by common_name
-# t = 0.1375, df = 72, p-value = 0.891
-# alternative hypothesis: true difference in means between group Gray Vireo and group Plumbeous Vireo is not equal to 0
+# data:  log_HP_parasitemia by common_name
+# t = 0.65506, df = 77, p-value = 0.5144
+# alternative hypothesis: true difference in means between group gray vireo and group plumbeous vireo is not equal to 0
 # 95 percent confidence interval:
-#  -0.1904011  0.2186123
+#  -0.09274433  0.18367924
 # sample estimates:
-#      mean in group Gray Vireo mean in group Plumbeous Vireo 
-#                     0.7359574                     0.7218519 
+#      mean in group gray vireo mean in group plumbeous vireo 
+#                     0.5797455                     0.5342781 
 #NOT SIGNIFICANTLY DIFFERENT
 
 #Calculate effect size using effsize package
-cohen.d(df_i_GRVI$HP_parasitemia, df_i_PLVI$HP_parasitemia, hedges.correction = TRUE)
+cohen.d(df_GRVI$log_HP_parasitemia, df_PLVI$log_HP_parasitemia, hedges.correction = TRUE)
 # Hedges's g
 # 
-# g estimate: 0.03285592 (negligible)
+# g estimate: 0.1525692 (negligible)
 # 95 percent confidence interval:
 #      lower      upper 
-# -0.4435278  0.5092397 
+# -0.3118272  0.6169657 
 ```
 
-## ------------------------------------------
+# ------------------------------------------
 
-#Tissue type v. intensity Not significant T-test (p-value = 0.891, g = -0.032)
+#Tissue type v. intensity: Not significant T-test (p-value = 0.514, g = -0.153)
+Tissue type perfectly divides the data by species, therefore show the same non-significant difference in means and t-test output.
 
 ```{r}
-pec_i <- subset(df_i_hp, df_i_hp$tissue_type == "pectoral muscle")
-blo_i <- subset(df_i_hp, df_i_hp$tissue_type == "whole blood")
+pec_i <- subset(df, df$tissue_type == "pectoral muscle") # 28 (Plumbeous)
+blo_i <- subset(df, df$tissue_type == "whole blood") # 51 (Gray)
 
-var.test(pec_i$HP_parasitemia, blo_i$HP_parasitemia)
+var.test(pec_i$log_HP_parasitemia, blo_i$log_HP_parasitemia)
 # 	F test to compare two variances
 # 
-# data:  pec_i$HP_parasitemia and blo_i$HP_parasitemia
-# F = 1.3932, num df = 26, denom df = 46, p-value = 0.3203
+# data:  pec_i$log_HP_parasitemia and blo_i$log_HP_parasitemia
+# F = 1.1014, num df = 27, denom df = 50, p-value = 0.7495
 # alternative hypothesis: true ratio of variances is not equal to 1
 # 95 percent confidence interval:
-#  0.7207895 2.8798065
+#  0.5810916 2.2351318
 # sample estimates:
 # ratio of variances 
-#           1.393243 
+#           1.101447 
 #PASSED - EQUAL VARIANCE
 
-t.test(pec_i$HP_parasitemia, blo_i$HP_parasitemia, var.equal = TRUE)
+t.test(pec_i$log_HP_parasitemia, blo_i$log_HP_parasitemia, var.equal = TRUE)
 # 	Two Sample t-test
 # 
-# data:  pec_i$HP_parasitemia and blo_i$HP_parasitemia
-# t = -0.1375, df = 72, p-value = 0.891
+# data:  pec_i$log_HP_parasitemia and blo_i$log_HP_parasitemia
+# t = -0.65506, df = 77, p-value = 0.5144
 # alternative hypothesis: true difference in means is not equal to 0
 # 95 percent confidence interval:
-#  -0.2186123  0.1904011
+#  -0.18367924  0.09274433
 # sample estimates:
 # mean of x mean of y 
-# 0.7218519 0.7359574 
+# 0.5342781 0.5797455
 #NOT SIGNIFICANTLY DIFFERENT  
 
 #Calculate effect size using effsize package
-cohen.d(pec_i$HP_parasitemia, blo_i$HP_parasitemia, hedges.correction = TRUE)
+cohen.d(pec_i$log_HP_parasitemia, blo_i$log_HP_parasitemia, hedges.correction = TRUE)
 # Hedges's g
 # 
-# g estimate: -0.03285592 (negligible)
+# g estimate: -0.1525692 (negligible)
 # 95 percent confidence interval:
 #      lower      upper 
-# -0.5092397  0.4435278 
+# -0.6169657  0.3118272 
 ```
 
+# ------------------------------------------
 
-## ------------------------------------------
-
-## Coinfections v. intensity Not significant T-test (p-value = 0.211, g = -0.497)
+# Coinfections v. intensity: Not significant T-test (p-value = 0.469, g = -0.286)
 
 ```{r}
-single_i <- subset(df_i_hp, df_i_hp$coinfection_01 == "0") #64
-co_i <- subset(df_i_hp, df_i_hp$coinfection_01 == "1") #7
-
+single_i <- subset(df, df$coinfection_01 == "0") #68
+co_i <- subset(df, df$coinfection_01 == "1") #7
 table(single_i$common_name)
-     # Gray Vireo Plumbeous Vireo 
-     #         51              19 
+     # gray vireo plumbeous vireo 
+     #         49              19 
 table(co_i$common_name)
-     # Gray Vireo Plumbeous Vireo 
+     # gray vireo plumbeous vireo 
      #          1               6 
-var.test(single_i$HP_parasitemia, co_i$HP_parasitemia)
+
+shapiro.test(single_i$HP_parasitemia)
+# 	Shapiro-Wilk normality test
+# 
+# data:  single_i$HP_parasitemia
+# W = 0.90792, p-value = 0.0001015
+# FAILED - not NORMAL DISTRIBUTION
+
+shapiro.test(co_i$HP_parasitemia)
+# 	Shapiro-Wilk normality test
+# 
+# data:  co_i$HP_parasitemia
+# W = 0.94895, p-value = 0.7201
+#PASSED - NORMAL DISTRIBUTION
+
+# USE THE LOG
+var.test(single_i$log_HP_parasitemia, co_i$log_HP_parasitemia)
 # 	F test to compare two variances
 # 
-# data:  single_i$HP_parasitemia and co_i$HP_parasitemia
-# F = 0.98086, num df = 63, denom df = 6, p-value = 0.8419
+# data:  single_i$log_HP_parasitemia and co_i$log_HP_parasitemia
+# F = 1.4081, num df = 67, denom df = 6, p-value = 0.7149
 # alternative hypothesis: true ratio of variances is not equal to 1
 # 95 percent confidence interval:
-#  0.1980029 2.5664007
+#  0.2846133 3.6662074
 # sample estimates:
 # ratio of variances 
-#          0.9808553
+#           1.408149 
 #PASSED -  EQUAL VARIANCE
 
-t.test(single_i$HP_parasitemia, co_i$HP_parasitemia, var.equal = TRUE)
+t.test(single_i$log_HP_parasitemia, co_i$log_HP_parasitemia, var.equal = TRUE)
 # 	Two Sample t-test
 # 
-# data:  single_i$HP_parasitemia and co_i$HP_parasitemia
-# t = -1.2614, df = 69, p-value = 0.2114
+# data:  single_i$log_HP_parasitemia and co_i$log_HP_parasitemia
+# t = -0.72789, df = 73, p-value = 0.469
 # alternative hypothesis: true difference in means is not equal to 0
 # 95 percent confidence interval:
-#  -0.5555497  0.1251479
+#  -0.3131097  0.1455842
 # sample estimates:
 # mean of x mean of y 
-# 0.7076562 0.9228571 
+# 0.5455666 0.6293294
 
 #Calculate effect size using effsize package
-cohen.d(single_i$HP_parasitemia, co_i$HP_parasitemia, hedges.correction = TRUE)
+cohen.d(single_i$log_HP_parasitemia, co_i$log_HP_parasitemia, hedges.correction = TRUE)
 # Hedges's g
 # 
 # g estimate: -0.4966807 (small)
@@ -713,554 +716,516 @@ cohen.d(single_i$HP_parasitemia, co_i$HP_parasitemia, hedges.correction = TRUE)
 # -1.2864946  0.2931333 
 ```
 
-## ------------------------------------------
+# ------------------------------------------
 
-## Haplotype v. intensity Significantly different (p-value = 0.006, η² = 0.18)
+# Haplotype v. intensity Significantly different (p-value = 0.006, η² = 0.18)
 
 ```{r}
-#This test can only be done with single-infection birds, otherwise you will not be able to parse out HP_parasitemia across haplotypes in coinfected birds (invalidating test findings).
+#This test can only be done with single-infection birds, otherwise you will not be able to parse out log_HP_parasitemia across haplotypes in coinfected birds (invalidating test findings).
 
-ggplot(single_i, aes(single_i$H_haplo1, single_i$HP_parasitemia)) + geom_boxplot()
+ggplot(single_i, aes(single_i$H_haplo1, single_i$log_HP_parasitemia)) + geom_boxplot()
 table(single_i$H_haplo1)
 # SETAUD14 TROAED12  VIGIL07 VIRPLU01 VIRPLU04 VIRPLU07 VIRPLU08 VIRPLU09 VIRVIC01 VIRVIC04 
-#        1        6        1        5        2        1        1        1       45        1
-
-# Filter for haplotypes that have at least 3 data points
-haplo_counts <- table(single_i$H_haplo1)  # Count occurrences of each haplotype
-valid_haplotypes <- names(haplo_counts[haplo_counts >= 3])  # Keep only those with 3+
-# Subset the data
-filtered_data <- single_i %>%
-  filter(H_haplo1 %in% valid_haplotypes)
+#        1        7        1        5        2        1        1        1       48        1
+#Subset out haplotypes that have less than 3 counts. That leaves us with:
+single_i_red <- subset(single_i, H_haplo1 %in% c("VIRVIC01", "VIRPLU01", "TROAED12"))
+#Drop unused levels
+single_i_red$H_haplo1 <- droplevels(single_i_red$H_haplo1)
+table(single_i_red$H_haplo1, single_i_red$common_name)
 ```
 
 ```{r}
-# Filter for only the three haplotypes of interest
-selected_haplotypes <- c("VIRVIC01", "VIRPLU01", "TROAED12")
+# Check normality for this subset of data
+shapiro.test(single_i_red$HP_parasitemia)
+# 	Shapiro-Wilk normality test
+# 
+# data:  single_i_red$HP_parasitemia
+# W = 0.90967, p-value = 0.0003018
+# FAILED - not NORMAL DISTRIBUTION
 
-filtered_data <- single_i %>%
-  filter(H_haplo1 %in% selected_haplotypes) %>%
-  mutate(H_haplo1 = factor(H_haplo1, levels = selected_haplotypes))  # Ensure factor order
+# USE LOG
 
-
-anova_model <- aov(HP_parasitemia ~ H_haplo1, data = filtered_data)
+anova_model <- aov(log_HP_parasitemia ~ H_haplo1, data = single_i_red)
 shapiro.test(resid(anova_model))
 # 	Shapiro-Wilk normality test
 # 
 # data:  resid(anova_model)
-# W = 0.96687, p-value = 0.1261
+# W = 0.96515, p-value = 0.08426
 # PASSED - DATA IS NORMALLY DISTRIBUTED
 
-leveneTest(HP_parasitemia ~ H_haplo1, data = filtered_data)
+leveneTest(log_HP_parasitemia ~ H_haplo1, data = single_i_red)
 # Levene's Test for Homogeneity of Variance (center = median)
 #       Df F value Pr(>F)
-# group  2    0.79 0.4591
-#       53 
+# group  2  0.8943 0.4145
 # PASSED - HOMOGENEITY OF VARIANCES MET
 
 # Run ANOVA
-anova_result <- aov(HP_parasitemia ~ H_haplo1, data = filtered_data)
+anova_result <- aov(log_HP_parasitemia ~ H_haplo1, data = single_i_red)
 
 # Print ANOVA summary
 summary(anova_result)
-#             Df Sum Sq Mean Sq F value  Pr(>F)   
-# H_haplo1     2  1.785  0.8926   5.709 0.00569 **
-# Residuals   53  8.287  0.1564                   
+#             Df Sum Sq Mean Sq F value Pr(>F)
+# H_haplo1     2  0.324 0.16216   1.928  0.155
+# Residuals   57  4.793 0.08409  
+# NO SIGNIFICANT DIFFERENCE IN PARASITEMIA
+```
+
+# ------------------------------------------
+
+# Environmental variables - Fixed Effects Linear Regression
+
+# ------------------------------------------
+
+# GRVI Model Selection (log(Parasitemia) ~ PrecipPC1 is best)
+```{r}
+GRVI_df <- subset(df, df$common_name == "gray vireo") #51
+
+#Standard linear regression with parasitemia as our response and environmental variables as our predictors.
+GRVI_model_df <- subset(GRVI_df, select = c("log_HP_parasitemia",
+                                  "common_name",
+                                  "rowID",
+                                  "analysis_lat",
+                                  "analysis_elev",
+                                  "tempPC1",
+                                  "tempPC2",
+                                  "precipPC1",
+                                  "precipPC2"
+                                  ))
+
+# Fit the full model
+GRVI_para.full.fixed <- lm(log_HP_parasitemia ~ 
+               analysis_lat + 
+               analysis_elev + 
+               tempPC1 + 
+               tempPC2 + 
+               precipPC1 + 
+               precipPC2
+             , data = GRVI_model_df
+             , na.action=na.fail
+             ) 
+
+summary(GRVI_para.full.fixed)
+# Call:
+# lm(formula = log_HP_parasitemia ~ analysis_lat + analysis_elev + 
+#     tempPC1 + tempPC2 + precipPC1 + precipPC2, data = GRVI_model_df, 
+#     na.action = na.fail)
+# 
+# Residuals:
+#      Min       1Q   Median       3Q      Max 
+# -0.47190 -0.18515 -0.01945  0.16813  0.58397 
+# 
+# Coefficients:
+#                 Estimate Std. Error t value Pr(>|t|)  
+# (Intercept)   47.8712218 35.9466000   1.332   0.1898  
+# analysis_lat  -1.3824179  1.0594596  -1.305   0.1987  
+# analysis_elev  0.0002667  0.0021107   0.126   0.9000  
+# tempPC1       -0.6228455  0.5308680  -1.173   0.2470  
+# tempPC2       -0.1574622  0.3079271  -0.511   0.6117  
+# precipPC1      0.4111020  0.2234310   1.840   0.0725 .
+# precipPC2      1.2802131  0.5659166   2.262   0.0287 *
 # ---
 # Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-#SIGNIFICANT DIFFERENCE IN PARASITEMIA
-
-# Run Tukey HSD post hoc test
-tukey_result <- TukeyHSD(anova_result)
-
-# Print results
-print(tukey_result)
-#   Tukey multiple comparisons of means
-#     95% family-wise confidence level
 # 
-# Fit: aov(formula = HP_parasitemia ~ H_haplo1, data = filtered_data)
-# 
-# $H_haplo1
-#                         diff          lwr         upr     p adj
-# VIRPLU01-VIRVIC01  0.4471111 -0.002363788  0.89658601 0.0514955 *
-# TROAED12-VIRVIC01 -0.3618889 -0.776284270  0.05250649 0.0983171
-# TROAED12-VIRPLU01 -0.8090000 -1.386360961 -0.23163904 0.0038618 ***
-
-# Eta squared
-eta_squared(anova_result)
-# Effect Size for ANOVA
-# 
-# Parameter | Eta2 |       95% CI
-# -------------------------------
-# H_haplo1  | 0.18 | [0.04, 1.00]
-# 
-# - One-sided CIs: upper bound fixed at [1.00].
+# Residual standard error: 0.2755 on 44 degrees of freedom
+# Multiple R-squared:  0.2057,	Adjusted R-squared:  0.09736 
+# F-statistic: 1.899 on 6 and 44 DF,  p-value: 0.1024
+r2(GRVI_para.full.fixed)
+  #      R2: 0.206
+  # adj. R2: 0.097
 ```
 
-# Visualzation
+## Evaluating Linear Model Assumptions
+
+-   Linearity - no further transformation needed past the natural log (1+x).
+-   Homoscedasticity - Some homoscedasticity where residuals are clustered tightly at mid-high values, and loosely at low.
+-   Normality of residuals - Acceptable (a bit of a tail on the lower end values).
+-   Influential observations - rowID 10 is somewhat influential, but not extreme.
+-   Multicollinearity - *We expect our variables to be strongly correlated, so we can ignore this for now.*
 
 ```{r}
-# Define custom colors
-custom_colors <- c("VIRVIC01" = "darkgray", "VIRPLU01" = "skyblue", "TROAED12" = "chocolate4")
+# Diagnostic plots
+ggplot2::autoplot(GRVI_para.full.fixed)
+# | Assumption         | Status          | 
+# | ------------------ | --------------- | 
+# | Linearity          | Mildly violated | 
+# | Homoscedasticity   | Mildly violated | 
+# | Normality          | Acceptable      | 
+# | Influential points | Acceptable      | 
 
-# Create the boxplot with jittered points and custom colors
-Haplo_parasitemia <- ggplot(filtered_data, aes(x = H_haplo1, y = HP_parasitemia, fill = H_haplo1)) +
-                         geom_boxplot(outlier.shape = NA, alpha = 0.6) +  # Boxplot without outlier points
-                         geom_jitter(aes(fill = H_haplo1), shape = 21, color = "black", stroke=0.5, size=2.5, show.legend = FALSE, alpha = 0.6) +
-                         theme(panel.border = element_rect(colour = "black", fill=NA, linewidth = 1)) +
-                         theme(panel.background = element_rect(fill='transparent'), #transparent panel bg
-                               plot.background = element_rect(fill='transparent', color=NA), #trt plot bg
-                               panel.grid.major = element_blank(), #remove major gridlines
-                               panel.grid.minor = element_blank(), #remove minor gridlines
-                               panel.border = element_blank(),
-                               legend.background = element_blank(), #transparent legend bg
-                               legend.box.background = element_blank() #trt legend panel
-                               ) +
-                         theme(axis.line = element_line(color = 'black')) +
-                         scale_y_continuous(limits=c(0,2)) + 
-                         labs(y="Parasitemia (%)", # Hella confusing formatting for x and y axis labels 
-                              x="Haplotype") + # x="Infected/Uninfected"
-                                #ggtitle("A") + # Assign panel number/header
-                              theme(plot.title.position = "plot", # parameter "plot" specifies that you want "title" flush with y-axis
-                              plot.title = element_text(face="bold")) + # This makes panel header bold 
-                              theme(plot.margin = unit(c(0.3,0.3,0.3,0.3), "cm")) +  # top, right, bottom, left    
-                              # theme(axis.text.x = element_text(angle = 45, hjust = 1)) + # Keep if you want labels angled; else don't keep
-                              theme(legend.position = "none") +
-                              theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), axis.title=element_text(size=16)) +
-                          scale_x_discrete(labels=c('VIRVIC01', 'VIRPLU01', 'TROAED12')) +
-                          #theme(axis.title.x=element_blank(), axis.title.y=element_blank()) +
-                          scale_fill_manual(values = c("VIRVIC01" = "darkgray", "VIRPLU01" = "skyblue", "TROAED12" = "chocolate4")) +
-                          scale_color_manual(values = c("VIRVIC01" = "darkgray", "VIRPLU01" = "skyblue", "TROAED12" = "chocolate4")) +
-                          theme(legend.position="none")
-Haplo_parasitemia
- # ggsave(Haplo_parasitemia, filename="Fig3_Boxplots_haplotype_parasitemia.pdf", bg="transparent", height=4.5, width=6, units="in")
+# Check multicollinearity
+vif(GRVI_para.full.fixed)
+
+ # analysis_lat analysis_elev       tempPC1       tempPC2     precipPC1     precipPC2 
+ #    222.17565      18.55602      48.59858      77.05847      32.83943     162.54223 
+
+cor(GRVI_model_df[, c("analysis_elev"
+                 , "analysis_lat"
+                 , "tempPC1"
+                 , "tempPC2"
+                 , "precipPC1"
+                 , "precipPC2"
+                 )], use = "complete.obs")
+
+#               analysis_elev analysis_lat     tempPC1     tempPC2  precipPC1  precipPC2
+# analysis_elev     1.0000000   -0.5549761  0.57007183 -0.77518868  0.9372650 -0.6385565
+# analysis_lat     -0.5549761    1.0000000  0.30226144  0.92366847 -0.3671596  0.9910648 ****
+# tempPC1           0.5700718    0.3022614  1.00000000 -0.05541633  0.7345520  0.2078852
+# tempPC2          -0.7751887    0.9236685 -0.05541633  1.00000000 -0.6230262  0.9476230
+# precipPC1         0.9372650   -0.3671596  0.73455197 -0.62302624  1.0000000 -0.4592789
+# precipPC2        -0.6385565    0.9910648  0.20788517  0.94762301 -0.4592789  1.0000000
+
+# Look at distributions
+p <- ggpairs(para.full.fixed,
+        mapping = aes(color = common_name),
+        upper = list(continuous = wrap("cor", size = 3)),
+        lower = list(continuous = wrap("smooth", alpha = 0.5, size = 0.3)),
+        diag = list(continuous = wrap("densityDiag", alpha = 0.4))) +
+  theme_bw()
+#print(p)
 ```
 
-## ------------------------------------------
-
-## One way tests for environmental variables + response variables
-
-## ------------------------------------------
-
-# Latitude v. intensity Not significant AOV (p-value = 0.317, η² = 0.04)
+We don't need latitude in this case, as it is a 1:1 for precipPC2 which is more insightful ecologically. Additionally, elevation in this group is captured by precipPC1 at almost a 1:1, but there are certain aspects of elevation that are physiologically important outside of elevations affect on temperature and precipitation, so we'll keep both.
 
 ```{r}
-# Null hypothesis: There is no significant correlation between latitude and infection intensity.
-lat_lm_Hp <- glm(HP_parasitemia~analysis_lat, data = df_i_hp, family = gaussian())
+GRVI_model_df <- subset(GRVI_df, select = c("log_HP_parasitemia",
+                                  "rowID",
+                                #  "analysis_lat",
+                                  "analysis_elev",
+                                  "tempPC1",
+                                  "tempPC2",
+                                  "precipPC1",
+                                  "precipPC2"
+                                  ))
 
-# diagnostic plots
-e_plot_lm_diagnostics(lat_lm_Hp)
-#Assess diagnostics:
-# The Hp diagnostic qqplots show normal distribution with no transformation needed.
-# 
-# Cooks distance shows observation 28 and 9 as outliers, however they are counter-balancing one another. 
-# Cooks Distance v. Leverage shows strong influence from point 28, and low from point 9.
-# No pattern in residuals. 
-# Variable plots show observation 8 is lifting the slope, but point 3 is lowering the slope, counterbalancing it.
-summary(lat_lm_Hp)
+
+# Fit model #1 (without latitude)
+GRVI_para.1.fixed <- lm(log_HP_parasitemia ~ 
+              # analysis_lat + 
+               analysis_elev + 
+               tempPC1 + 
+               tempPC2 + 
+               precipPC1 + 
+               precipPC2
+             , data = GRVI_model_df
+             , na.action=na.fail
+             ) 
+
+summary(GRVI_para.1.fixed)
 # Call:
-# glm(formula = HP_parasitemia ~ analysis_lat, family = gaussian(), 
-#     data = df_i_hp)
+# lm(formula = log_HP_parasitemia ~ analysis_elev + tempPC1 + tempPC2 + 
+#     precipPC1 + precipPC2, data = GRVI_model_df, na.action = na.fail)
+# 
+# Residuals:
+#     Min      1Q  Median      3Q     Max 
+# -0.5222 -0.1933 -0.0087  0.1655  0.6184 
 # 
 # Coefficients:
-#               Estimate Std. Error t value Pr(>|t|)
-# (Intercept)   0.985351   2.208218   0.446    0.657
-# analysis_lat -0.007398   0.064166  -0.115    0.909
+#                 Estimate Std. Error t value Pr(>|t|)  
+# (Intercept)    1.2179726  3.7431494   0.325   0.7464  
+# analysis_elev -0.0005399  0.0020338  -0.265   0.7919  
+# tempPC1       -1.0074148  0.4449728  -2.264   0.0284 *
+# tempPC2       -0.4089707  0.2420047  -1.690   0.0980 .
+# precipPC1      0.5194902  0.2090288   2.485   0.0167 *
+# precipPC2      0.7828089  0.4215193   1.857   0.0698 .
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 # 
-# (Dispersion parameter for gaussian family taken to be 0.1804938)
-# 
-#     Null deviance: 12.998  on 73  degrees of freedom
-# Residual deviance: 12.996  on 72  degrees of freedom
-# AIC: 87.283
-# 
-# Number of Fisher Scoring iterations: 2
-# NOT SIGNIFICANT
-#Looking at the distribution of TPC1, I believe using 3 distinct ranks and comparing the intensity would better fit the data.
-
-df_i_hp$analysis_lat <- as.factor(df_i_hp$analysis_lat)
-table(df_i_hp$analysis_lat)
-
-df_i_hp_lat34 <- subset(df_i_hp, df_i_hp$analysis_lat == "34")
-df_i_hp_lat35 <- subset(df_i_hp, df_i_hp$analysis_lat == "35")
-df_i_hp_lat36 <- subset(df_i_hp, df_i_hp$analysis_lat == "36")
-
-shapiro.test(df_i_hp_lat34$HP_parasitemia)
-# 	Shapiro-Wilk normality test
-# 
-# data:  df_i_hp_lat34$HP_parasitemia
-# W = 0.9676, p-value = 0.1508
-#PASSED - NORMAL DISTRIBUTION
-
-shapiro.test(df_i_hp_lat35$HP_parasitemia)
-# 	Shapiro-Wilk normality test
-# 
-# data:  df_i_hp_lat35$HP_parasitemia
-# W = 0.96641, p-value = 0.8698
-#PASSED - NORMAL DISTRIBUTION
-
-shapiro.test(df_i_hp_lat36$HP_parasitemia)
-# 	Shapiro-Wilk normality test
-# 
-# data:  df_i_hp_lat36$HP_parasitemia
-# W = 0.93181, p-value = 0.5664
-#PASSED - NORMAL DISTRIBUTION
-
-leveneTest(HP_parasitemia ~ analysis_lat, data = df_i_hp)
-# Levene's Test for Homogeneity of Variance (center = median)
-#       Df F value Pr(>F)
-# group  3  0.8398 0.4766
-#       70    
-#PASSED - EQUAL VARIANCES
-
-aovHp.lat <- aov(HP_parasitemia ~ analysis_lat, data = df_i_hp)
-
-boxCox(aovHp.lat) #No transformation needed
-      
-e_plot_lm_diagnostics(aovHp.lat)
-#Observation 9 is an outlier with strong leverage, working to increase slope of lat36 | others. Consider removing if significant or close to significant.
-
-summary(aovHp.lat)
-#              Df Sum Sq Mean Sq F value Pr(>F)
-# analysis_lat  3  0.518  0.1726   0.968  0.413
-# Residuals    70 12.480  0.1783 
-
-library(report)
-report(aovHp.lat)
-# The ANOVA (formula: HP_parasitemia ~ analysis_lat) suggests that:
-# 
-#   - The main effect of analysis_lat is statistically not significant and small (F(3, 70) = 0.97, p = 0.413; Eta2 = 0.04,
-# 95% CI [0.00, 1.00])
-# 
-# Effect sizes were labelled following Field's (2013) recommendations.
+# Residual standard error: 0.2777 on 45 degrees of freedom
+# Multiple R-squared:  0.1749,	Adjusted R-squared:  0.08327 
+# F-statistic: 1.908 on 5 and 45 DF,  p-value: 0.1117
 ```
 
-We see no significant relationship between infection intensity and latitude.
-
-## ------------------------------------------
-
-# Elevation v. intensity Not significant LM (p-value = 0.079)
-
-# Elevation v. intensity by species Not significant (GRVI p-value = 0.056; PLVI p-value = 0.89)
+## Model Selection for global additive only model
 
 ```{r}
-library(report)
-elev_lm_Hp <- glm(HP_parasitemia~analysis_elev, data = df_i_hp, family = gaussian)
-e_plot_lm_diagnostics(elev_lm_Hp) #Normal distribution, some outliers, (obs 10,17,1), but relatively small leverage. 
-
-print(elev_lm_Hp)
-# Call:  glm(formula = HP_parasitemia ~ analysis_elev, family = gaussian, 
-#     data = df_i_hp)
-# 
-# Coefficients:
-#   (Intercept)  analysis_elev  
-#     6.174e-01      5.686e-05  
-# 
-# Degrees of Freedom: 73 Total (i.e. Null);  72 Residual
-# Null Deviance:	    13 
-# Residual Deviance: 12.98 	AIC: 87.19
-report(elev_lm_Hp)
-# We fitted a linear model (estimated using ML) to predict HP_parasitemia with analysis_elev (formula: HP_parasitemia ~ analysis_elev). The model's explanatory
-# power is very weak (R2 = 1.48e-03). The model's intercept, corresponding to analysis_elev = 0, is at 0.62 (95% CI [-0.07, 1.31], t(72) = 1.76, p = 0.079). Within
-# this model:
-# 
-#   - The effect of analysis elev is statistically non-significant and positive (beta = 5.69e-05, 95% CI [-2.85e-04, 3.98e-04], t(72) = 0.33, p = 0.744; Std. beta =
-# 0.04, 95% CI [-0.19, 0.27])
-# 
-# Standardized parameters were obtained by fitting the model on a standardized version of the dataset. 95% Confidence Intervals (CIs) and p-values were computed
-# using a Wald t-distribution approximation.
-
-#---------------------------
-#GRVI ONLY
-
-elev_GRVI_lm_Hp <- glm(HP_parasitemia~analysis_elev, data = df_i_GRVI, family = gaussian)
-e_plot_lm_diagnostics(elev_GRVI_lm_Hp) #Normal distribution, some outliers, but not strong leverage. No pattern in the residuals. Slight homoscedasticity, but nothing major.
-
-print(elev_GRVI_lm_Hp)
-# Call:  glm(formula = HP_parasitemia ~ analysis_elev, family = gaussian, 
-#     data = df_i_GRVI)
-# 
-# Coefficients:
-#   (Intercept)  analysis_elev  
-#     -1.627675       0.001322  
-# 
-# Degrees of Freedom: 46 Total (i.e. Null);  45 Residual
-# Null Deviance:	    7.27 
-# Residual Deviance: 6.723 	AIC: 47.98
-report(elev_GRVI_lm_Hp)
-# We fitted a linear model (estimated using ML) to predict HP_parasitemia with analysis_elev (formula: HP_parasitemia ~
-# analysis_elev). The model's explanatory power is weak (R2 = 0.08). The model's intercept, corresponding to analysis_elev
-# = 0, is at -1.63 (95% CI [-4.05, 0.80], t(45) = -1.32, p = 0.188). Within this model:
-# 
-#   - The effect of analysis elev is statistically non-significant and positive (beta = 1.32e-03, 95% CI [-3.22e-05,
-# 2.68e-03], t(45) = 1.91, p = 0.056; Std. beta = 0.27, 95% CI [-6.68e-03, 0.56])
-# 
-# Standardized parameters were obtained by fitting the model on a standardized version of the dataset. 95% Confidence
-# Intervals (CIs) and p-values were computed using a Wald t-distribution approximation.
-
-#---------------------------
-#PLVI ONLY
-elev_PLVI_lm_Hp <- glm(HP_parasitemia~analysis_elev, data = df_i_PLVI, family = gaussian)
-e_plot_lm_diagnostics(elev_PLVI_lm_Hp) #Normal distribution, some outliers, but not strong leverage. No pattern in the residuals. 
-
-print(elev_PLVI_lm_Hp)
-# Call:  glm(formula = HP_parasitemia ~ analysis_elev, family = gaussian, 
-#     data = df_i_PLVI)
-# 
-# Coefficients:
-#   (Intercept)  analysis_elev  
-#    -0.4416653      0.0004941  
-# 
-# Degrees of Freedom: 26 Total (i.e. Null);  25 Residual
-# Null Deviance:	    5.725 
-# Residual Deviance: 5.695 	AIC: 40.6
-report(elev_PLVI_lm_Hp)
-# We fitted a linear model (estimated using ML) to predict HP_parasitemia with analysis_elev (formula: HP_parasitemia ~
-# analysis_elev). The model's explanatory power is very weak (R2 = 5.24e-03). The model's intercept, corresponding to
-# analysis_elev = 0, is at -0.44 (95% CI [-6.73, 5.84], t(25) = -0.14, p = 0.890). Within this model:
-# 
-#   - The effect of analysis elev is statistically non-significant and positive (beta = 4.94e-04, 95% CI [-2.17e-03,
-# 3.16e-03], t(25) = 0.36, p = 0.717; Std. beta = 0.07, 95% CI [-0.32, 0.46])
-# 
-# Standardized parameters were obtained by fitting the model on a standardized version of the dataset. 95% Confidence
-# Intervals (CIs) and p-values were computed using a Wald t-distribution approximation.
-```
-
-We see no significant correlation between infection intensity and elevation in either group.
-
-```{r}
-Hp_elev_int_line <- ggplot(df_i_hp, aes(x = HP_parasitemia, y = analysis_elev)) + geom_point() + geom_smooth()
-Hp_elev_int_line
-```
-
-## ------------------------------------------
-
-# TPC1 v. intensity Not significant AOV (p-value = 0.991, η² = 0.0003)
-
-```{r}
-# Null hypothesis: There is no significant correlation between tempPC1 and infection intensity.
-tempPC1_lm_Hp <- glm(HP_parasitemia~tempPC1, data = df_i_hp, family = gaussian())
-
-# diagnostic plots
-e_plot_lm_diagnostics(tempPC1_lm_Hp)
-#Assess diagnostics:
-# No transformations needed.
-# 
-# Cooks distance shows observation 9 as an outlier.
-# Cooks Distance v. Leverage shows high influence from above points.
-# 
-# No pattern in residuals and variance is unequal.
-# Variable plots show observation 8 work to make our slope more conservative. 
-
-summary(tempPC1_lm_Hp)
+# Run model dredging
+options(na.action = "na.fail")  # Required by dredge
+GRVI_dredge_results.fixed <- dredge(GRVI_para.1.fixed, rank = "AICc", trace = TRUE)
+# View top models
+head(GRVI_dredge_results.fixed)
+# Show top 5 models in dredge results
+GRVI_top5.fixed <- head(GRVI_dredge_results.fixed, 5)
+# Print basic table
+print(GRVI_top5.fixed)
+# Global model call: lm(formula = log_HP_parasitemia ~ analysis_elev + tempPC1 + tempPC2 + 
+#     precipPC1 + precipPC2, data = GRVI_model_df, na.action = na.fail)
+# ---
+# Model selection table 
+#      (Int)   anl_elv    pPC1     pPC2    tPC1     tPC2 df logLik AICc delta weight
+# 3   0.6266           0.06775                            3 -7.298 21.1  0.00  0.224
+# 11  0.5225           0.13210          -0.1711           4 -6.140 21.1  0.04  0.219
+# 17  0.5590                                    -0.05826  3 -7.424 21.4  0.25  0.197
+# 2  -0.8412 0.0007943                                    3 -7.488 21.5  0.38  0.185
+# 5   0.5499                   -0.07007                   3 -7.553 21.6  0.51  0.174
+# Models ranked by AICc(x)
+GRVI_best_model.fixed <- get.models(GRVI_dredge_results.fixed, 1)[[1]]
+summary(GRVI_best_model.fixed)
 # Call:
-# glm(formula = HP_parasitemia ~ tempPC1, family = gaussian(), 
-#     data = df_i_hp)
+# lm(formula = log_HP_parasitemia ~ precipPC1 + 1, data = GRVI_model_df, 
+#     na.action = na.fail)
+# 
+# Residuals:
+#     Min      1Q  Median      3Q     Max 
+# -0.5298 -0.1869 -0.0002  0.1512  0.7317 
 # 
 # Coefficients:
 #             Estimate Std. Error t value Pr(>|t|)    
-# (Intercept) 0.735579   0.060579  12.142   <2e-16 ***
-# tempPC1     0.008019   0.059005   0.136    0.892    
+# (Intercept)  0.62655    0.04864  12.880   <2e-16 ***
+# precipPC1    0.06775    0.04031   1.681   0.0992 .  
 # ---
 # Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 # 
-# (Dispersion parameter for gaussian family taken to be 0.1804808)
-# 
-#     Null deviance: 12.998  on 73  degrees of freedom
-# Residual deviance: 12.995  on 72  degrees of freedom
-# AIC: 87.278
-# 
-# Number of Fisher Scoring iterations: 2
-# NOT SIGNIFICANT
-
-#Looking at the distribution of TPC1, I believe using 3 distinct ranks and comparing the intensity would better fit the data.
-df_i_hp$tempPC1 <- as.factor(df_i_hp$tempPC1)
-table(df_i_hp$tempPC1)
-
-df_i_hp_tpc1n2 <- subset(df_i_hp, df_i_hp$tempPC1 == "-2")
-df_i_hp_tpc1n1 <- subset(df_i_hp, df_i_hp$tempPC1 == "-1")
-df_i_hp_tpc10 <- subset(df_i_hp, df_i_hp$tempPC1 == "0")
-
-shapiro.test(df_i_hp_tpc1n2$HP_parasitemia)
-# 	Shapiro-Wilk normality test
-# 
-# data:  df_i_hp_tpc1n2$HP_parasitemia
-# W = 0.92139, p-value = 0.1559
-
-shapiro.test(df_i_hp_tpc1n1$HP_parasitemia)
-# 	Shapiro-Wilk normality test
-# 
-# data:  df_i_hp_tpc1n1$HP_parasitemia
-# W = 0.93075, p-value = 0.4553
-
-shapiro.test(df_i_hp_tpc10$HP_parasitemia)
-# 	Shapiro-Wilk normality test
-# 
-# data:  df_i_hp_tpc10$HP_parasitemia
-# W = 0.97349, p-value = 0.3575
-
-aovHp.tpc1 <- aov(HP_parasitemia ~ tempPC1, data = df_i_hp)
-boxCox(aovHp.tpc1) #No transformation needed
-
-e_plot_lm_diagnostics(aovHp.tpc1)
-#9 and 16 outlier with moderate leverage, but they work to counteract one another
-
-summary(aovHp.tpc1)
-#             Df Sum Sq Mean Sq F value Pr(>F)
-# tempPC1      2  0.003 0.00174    0.01  0.991
-# Residuals   71 12.994 0.18302 
-library(report)
-report(aovHp.tpc1)
-# The ANOVA (formula: HP_parasitemia ~ tempPC1) suggests that:
-# 
-#   - The main effect of tempPC1 is statistically not significant and very small (F(2, 71) = 9.52e-03, p = 0.991; Eta2 =
-# 2.68e-04, 95% CI [0.00, 1.00])
-# 
-# Effect sizes were labelled following Field's (2013) recommendations.
+# Residual standard error: 0.2848 on 49 degrees of freedom
+# Multiple R-squared:  0.05452,	Adjusted R-squared:  0.03522 
+# F-statistic: 2.825 on 1 and 49 DF,  p-value: 0.09915
 ```
 
-We see no significant relationship between infection intensity and tempPC1.
+Haem_01 ~ precipPC1
+This model suggests that parasitemia increases with precipitation-related environmental variation. This predictor explain a modest portion of variation in the log-transformed parasitemia response.
 
-##------------------------------------------
-
-# TPC2 v. intensity Not significant AOV (p-value = 0.365, η² = 0.04)
+Residual deviance: 3.98 on 49 df (vs null deviance: 4.20 on 50 df)
+AIC: 20.6
+Dispersion: 0.081
 
 ```{r}
-# Null hypothesis: There is no significant correlation between tempPC2 and infection intensity.
-tempPC2_lm_Hp <- glm(HP_parasitemia~tempPC2, data = df_i_hp, family = gaussian())
-
-# diagnostic plots
-e_plot_lm_diagnostics(tempPC2_lm_Hp)
-#Assess diagnostics:
-# No transformations needed.
-# 
-# Cooks distance shows observation 28 as an outlier.
-# Cooks Distance v. Leverage shows high influence from above points.
-# 
-# No pattern in residuals and variance is unequal.
-# Variable plots show observation 8 work to make our slope more conservative. 
-
-summary(tempPC2_lm_Hp)
-# Call:
-# glm(formula = HP_parasitemia ~ tempPC2, family = gaussian(), 
-#     data = df_i_hp)
-# 
-# Coefficients:
-#             Estimate Std. Error t value Pr(>|t|)    
-# (Intercept)  0.73312    0.05251  13.962   <2e-16 ***
-# tempPC2      0.01066    0.08246   0.129    0.897    
-# ---
-# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-# 
-# (Dispersion parameter for gaussian family taken to be 0.1804852)
-# 
-#     Null deviance: 12.998  on 73  degrees of freedom
-# Residual deviance: 12.995  on 72  degrees of freedom
-# AIC: 87.279
-# 
-# Number of Fisher Scoring iterations: 2
-# NOT SIGNIFICANT
-
-#Looking at the distribution of tpc2, I believe using 3 distinct ranks and comparing the intensity would better fit the data.
-df_i_hp$tempPC2 <- as.factor(df_i_hp$tempPC2)
-table(df_i_hp$tempPC2)
-
-aovHp.tpc2 <- aov(HP_parasitemia ~ tempPC2, data = df_i_hp)
-boxCox(aovHp.tpc2) #No transformation needed
-
-e_plot_lm_diagnostics(aovHp.tpc2)
-#24 and 11 outlier with moderate leverage, but they do not appear to be changing the slope.
-
-summary(aovHp.tpc2)
-#             Df Sum Sq Mean Sq F value Pr(>F)
-# tempPC2      3  0.573  0.1910   1.076  0.365
-# Residuals   70 12.425  0.1775   
-library(report)
-report(aovHp.tpc2)
-# The ANOVA (formula: HP_parasitemia ~ tempPC2) suggests that:
-# 
-#   - The main effect of tempPC2 is statistically not significant and small (F(3, 70) = 1.08, p = 0.365; Eta2 = 0.04, 95% CI
-# [0.00, 1.00])
-# 
-# Effect sizes were labelled following Field's (2013) recommendations.
+# Make table of top five models
+top5.tibble <- as_tibble(GRVI_top5.fixed)
+write.table(top5.tibble, file = "Top_five_fixed_effects_models_parasitemia_output_GRVI.csv", sep = ",", row.names = FALSE)
 ```
 
-We see no significant correlation between infection intensity and tempPC2.
-
-## ------------------------------------------
-
-# PPC1 v. intensity Not significant AOV (p-value = 0.93, η² = 0.0006)
+##  Model Summary & R²
 
 ```{r}
-#Looking at the distribution of ppc1, I believe using 3 distinct ranks and comparing the intensity would better fit the data.
-df_i_hp$precipPC1 <- as.factor(df_i_hp$precipPC1)
-table(df_i_hp$precipPC1)
+cv_data <- na.omit(GRVI_model_df[, c("log_HP_parasitemia", "precipPC1")])
 
-aovHp.ppc1 <- aov(HP_parasitemia ~ precipPC1, data = df_i_hp)
+GRVI_final_model <- lm(log_HP_parasitemia ~ precipPC1
+                       , data = cv_data)
+# Model summary
+summary(GRVI_final_model)
+r2(GRVI_final_model)
+  #      R2: 0.055
+  # adj. R2: 0.035
 
-e_plot_lm_diagnostics(aovHp.ppc1)
-#26 & 70 outliers with moderate leverage, but they do not appear to be changing the slope.
-
-summary(aovHp.ppc1)
-#             Df Sum Sq Mean Sq F value Pr(>F)
-# precipPC1    3  0.083 0.02758   0.149   0.93
-# Residuals   70 12.915 0.18450   
-library(report)
-report(aovHp.ppc1)
-# The ANOVA (formula: HP_parasitemia ~ precipPC1) suggests that:
+# Check normality of residuals
+shapiro.test(residuals(GRVI_final_model))
+# 	Shapiro-Wilk normality test
 # 
-#   - The main effect of precipPC1 is statistically not significant and very small (F(3, 70) = 0.15, p = 0.930; Eta2 =
-# 6.37e-03, 95% CI [0.00, 1.00])
-# 
-# Effect sizes were labelled following Field's (2013) recommendations.
+# data:  residuals(GRVI_best_model.fixed)
+# W = 0.97371, p-value = 0.3134
+# PASSED - NO SIGNIFICANT VIOLATIONS OF NORMALITY
 ```
 
-We see no significant correlation between infection intensity and precipPC1.
+## Root Mean Squared Error (RMSE)
+```{r}
+# Compute RMSE manually
+rmse <- sqrt(mean(residuals(GRVI_final_model)^2))
+cat("RMSE:", rmse)
+# RMSE: 0.2791936
+```
 
-##------------------------------------------
-
-# PPC2 v. intensity Not significant T-test (p-value = 0.865, g = 0.099)
+## 10-Fold Cross Validation
 
 ```{r}
-#Looking at the distribution of ppc2, I believe using 2 distinct ranks and comparing the intensity would better fit the data.
-df_i_hp$precippc2 <- as.factor(df_i_hp$precipPC2)
-table(df_i_hp$precippc2)
+library(caret)
 
-df_i_hp_ppc20 <- filter(df_i_hp, df_i_hp$precipPC2 == "0")
-df_i_hp_ppc21 <- filter(df_i_hp, df_i_hp$precipPC2 == "1")
+# Set up 10-fold CV
+set.seed(123)
+train_control <- trainControl(method = "cv", number = 10)
 
-hp_ppc2_int_var.t <- var.test(df_i_hp_ppc20$HP_parasitemia, df_i_hp_ppc21$HP_parasitemia, alternative = "two.sided")
-hp_ppc2_int_var.t
-# 	F test to compare two variances
-# 
-# data:  df_i_hp_ppc20$HP_parasitemia and df_i_hp_ppc21$HP_parasitemia
-# F = 0.60458, num df = 62, denom df = 9, p-value = 0.2396
-# alternative hypothesis: true ratio of variances is not equal to 1
-# 95 percent confidence interval:
-#  0.1754617 1.4068456
-# sample estimates:
-# ratio of variances 
-#          0.6045767 
-# PASSED - EQUAL VARIANCE
+# Train the model using caret
+model_cv <- train(log_HP_parasitemia ~ precipPC1,
+                  data = cv_data,
+                  method = "lm",
+                  trControl = train_control)
 
-t.test(df_i_hp_ppc20$HP_parasitemia, df_i_hp_ppc21$HP_parasitemia, var.equal = TRUE)
-# 	Two Sample t-test
-# 
-# data:  df_i_hp_ppc20$HP_parasitemia and df_i_hp_ppc21$HP_parasitemia
-# t = 0.29354, df = 71, p-value = 0.77
-# alternative hypothesis: true difference in means is not equal to 0
-# 95 percent confidence interval:
-#  -0.2437599  0.3279186
-# sample estimates:
-# mean of x mean of y 
-# 0.7450794 0.7030000 
-# NOT SIGNIFICANT
+# View cross-validated RMSE
+model_cv$results
 
-#Calculate effect size using effsize package
-cohen.d(df_i_hp_ppc20$HP_parasitemia, df_i_hp_ppc21$HP_parasitemia, hedges.correction = TRUE)
-# Hedges's g
-# 
-# g estimate: 0.09886051 (negligible)
-# 95 percent confidence interval:
-#      lower      upper 
-# -0.5728791  0.7706002 
+#   intercept      RMSE  Rsquared      MAE     RMSESD RsquaredSD      MAESD
+# 1      TRUE 0.2733282 0.1880088 0.220112 0.07398668  0.2005147 0.05871628
 ```
-We see no significant correlation between infection intensity and precipPC2.
+
+
+# ------------------------------------------
+
+# PLVI  Model Selection (Null is best)
+```{r}
+PLVI_df <- subset(df, df$common_name == "plumbeous vireo") #28
+# With such a small dataset, if we build too complex of a model, it is likely to overfit.
+
+#Standard linear regression with parasitemia as our response and environmental variables as our predictors.
+PLVI_model_df <- subset(PLVI_df, select = c("log_HP_parasitemia",
+                                 "analysis_elev",
+                                  "tempPC1",
+                                  "tempPC2",
+                                  "precipPC1",
+                                  "precipPC2"
+                                  ))
+
+ PLVI_para.full.fixed <- lm(log_HP_parasitemia ~ 
+                              analysis_elev
+                            + tempPC1
+                            + tempPC2
+                            + precipPC1
+                            + precipPC2
+                            , data = PLVI_model_df)
+```
+## Evaluating Linear Model Assumptions
+
+-   Linearity - no further transformation needed past the natural log (1+x).
+-   Homoscedasticity - Some homoscedasticity where residuals are clustered tightly at mid-high values, and loosely at low.
+-   Normality of residuals - Acceptable (a bit of a tail on the lower end values).
+-   Influential observations - rowID 10 is somewhat influential, but not extreme.
+-   Multicollinearity - *We expect our variables to be strongly correlated, so we can ignore this for now.*
+
+```{r}
+# Diagnostic plots
+ggplot2::autoplot(PLVI_para.full.fixed)
+# | Assumption         | Status          | 
+# | ------------------ | --------------- | 
+# | Linearity          | Acceptable      | 
+# | Homoscedasticity   | Moderately violated| 
+# | Normality          | Acceptable      | 
+# | Influential points | Moderately violated| 
+
+# We should be careful of the small sample size of PLVI dataset and take everything with that in mind.
+
+# Check multicollinearity
+vif(PLVI_para.full.fixed)
+
+# analysis_elev       tempPC1       tempPC2     precipPC1     precipPC2 
+#     14.063074      8.276725     10.336208     10.179891     16.835009 
+
+cor(PLVI_model_df[, c("analysis_elev"
+               #  , "analysis_lat"
+                 , "tempPC1"
+                 , "tempPC2"
+                 , "precipPC1"
+                 , "precipPC2"
+                 )], use = "complete.obs")
+
+#               analysis_elev     tempPC1    tempPC2   precipPC1  precipPC2
+# analysis_elev     1.0000000  0.76011210 -0.7001652 -0.14683872 -0.2073260
+# tempPC1           0.7601121  1.00000000 -0.1600593  0.06085935  0.2633274
+# tempPC2          -0.7001652 -0.16005935  1.0000000  0.17753831  0.5548289
+# precipPC1        -0.1468387  0.06085935  0.1775383  1.00000000  0.8271148
+# precipPC2        -0.2073260  0.26332740  0.5548289  0.82711480  1.0000000
+# Not as strongly collinear, though we still see elevation and temperature come out as high, as well as precipPC1 & precipPC2.
+
+# Look at distributions
+p <- ggpairs(PLVI_para.full.fixed,
+       # mapping = aes(color = common_name),
+        upper = list(continuous = wrap("cor", size = 3)),
+        lower = list(continuous = wrap("smooth", alpha = 0.5, size = 0.3)),
+        diag = list(continuous = wrap("densityDiag", alpha = 0.4))) +
+  theme_bw()
+# print(p)
+```
+
+## Model Selection for global additive only model
+
+```{r}
+# Candidate models
+# Univariate
+mod_null          <- lm(log_HP_parasitemia ~ 1, data = PLVI_model_df)
+mod_temp1         <- lm(log_HP_parasitemia ~ tempPC1, data = PLVI_model_df)
+mod_precip1       <- lm(log_HP_parasitemia ~ precipPC1, data = PLVI_model_df)
+mod_temp2         <- lm(log_HP_parasitemia ~ tempPC2, data = PLVI_model_df)
+mod_precip2       <- lm(log_HP_parasitemia ~ precipPC2, data = PLVI_model_df)
+mod_elev          <- lm(log_HP_parasitemia ~ analysis_elev, data = PLVI_model_df)
+
+# Multivariate models
+mod_temp1_precip1 <- lm(log_HP_parasitemia ~ tempPC1 + precipPC1, data = PLVI_model_df)
+mod_temp1_precip2 <- lm(log_HP_parasitemia ~ tempPC1 + precipPC2, data = PLVI_model_df)
+mod_temp1_elev    <- lm(log_HP_parasitemia ~ tempPC1 + analysis_elev, data = PLVI_model_df)
+
+mod_temp2_precip1 <- lm(log_HP_parasitemia ~ tempPC2 + precipPC1, data = PLVI_model_df)
+mod_temp2_precip2 <- lm(log_HP_parasitemia ~ tempPC2 + precipPC2, data = PLVI_model_df)
+mod_temp2_elev    <- lm(log_HP_parasitemia ~ tempPC2 + analysis_elev, data = PLVI_model_df)
+
+mod_precip1_elev  <- lm(log_HP_parasitemia ~ precipPC1 + analysis_elev, data = PLVI_model_df)
+mod_precip2_elev  <- lm(log_HP_parasitemia ~ precipPC2 + analysis_elev, data = PLVI_model_df)
+
+# Global model
+full <- lm(log_HP_parasitemia ~ tempPC1 + tempPC2 + precipPC1 + precipPC2 + analysis_elev, data = PLVI_model_df)
+
+# Calculate AICc
+aicc_values <- sapply(list(mod_null
+                           , mod_temp1
+                           , mod_precip1
+                           , mod_temp2
+                           , mod_precip2
+                           , mod_elev                           
+                           , mod_temp1_precip1
+                           , mod_temp1_precip2
+                           , mod_temp2_precip1
+                           , mod_temp2_precip2
+                           , mod_temp2_elev
+                           , mod_temp1_elev
+                           , mod_precip1_elev
+                           , mod_precip2_elev
+                           , full
+                           ), AICc)
+
+# Compare
+tibble(aicc_values)
+#  1        16.3 ***** Null
+#  2        18.8 ** temp1 only
+#  3        18.3 * precip1 only
+#  4        18.0 *** temp2 only
+#  5        17.9 **** precip2 only 
+#  6        18.7
+#  7        20.9
+#  8        20.4
+#  9        20.4
+# 10        20.4
+# 11        20.7
+# 12        21.4
+# 13        20.9
+# 14        20.6
+# 15        28.5
+
+# Null model is best
+
+# Create a supplemental table with model outputs
+library(AICcmodavg)
+library(broom)
+
+# Named list of models
+model_list <- list(
+  null = mod_null,
+  tempPC1 = mod_temp1,
+  precipPC1 = mod_precip1,
+  tempPC2 = mod_temp2,
+  precipPC2 = mod_precip2,
+  elev = mod_elev,
+  temp1_precip1 = mod_temp1_precip1,
+  temp1_precip2 = mod_temp1_precip2,
+  temp2_precip1 = mod_temp2_precip1,
+  temp2_precip2 = mod_temp2_precip2,
+  temp1_elev = mod_temp1_elev,
+  temp2_elev = mod_temp2_elev,
+  precip1_elev = mod_precip1_elev,
+  precip2_elev = mod_precip2_elev,
+  full = full
+)
+
+# Get AICc values and ΔAICc, weights
+aic_table <- aictab(cand.set = model_list, modnames = names(model_list), sort = FALSE)
+
+# Get R² values
+r2_values <- sapply(model_list, function(m) summary(m)$r.squared)
+
+# Combine
+final_table <- cbind(aic_table, R2 = round(r2_values[match(aic_table$Modname, names(r2_values))], 3))
+
+# View
+print(final_table)
+write.csv(final_table, "Fixed_effects_models_parasitemia_output_PLVI.csv")
+```
+
+Since null model is best, we don't need to go through model fit assessment.
+
+
+# ------------------------------------------
+

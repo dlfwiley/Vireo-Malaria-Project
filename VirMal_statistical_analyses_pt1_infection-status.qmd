@@ -1,5 +1,5 @@
 ---
-title: "Exploration and statistical analyses Haemosporidian infection prevalence across vireos"
+title: "Exploration and statistical analyses of Haemosporidian infection status (1/0) across vireos"
 author: Dani Wiley
 date:   last-modified
 editor: visual
@@ -24,161 +24,80 @@ editor_options:
   chunk_output_type: console
 ---
 
-## START----------------------------------------------
-
-# Patterns in the data summary
-
-In pt 1 and pt 2 of the VirMal_Statistical_Analyses.qmd, we explore the data in various ways, depending on the type of variables and relationships we are interested in testing. Summaries are listed at the top and in the outline headers.
-
-This document (pt. 1) covers analyses relating to infection status.
-
-1\) Chi-squared analysis (categorical independent and dependent variables) & Mann-Whitney / T-Test (categorical and assumed continuous/numerical discrete)
-
--   **Species v. infection status (χ2)**
-
-    -   PLVI have significantly more infection counts than uninfected, this differs from GRVI and BEVI who have lower than expected counts (Pearson's coefficient correlation plots).Statistically, the difference lies between BEVI and PLVI.
-
--   **Tissue type vs. infection status (χ2)**
-
-    -   No significant difference in infection status between pectoral and whole blood samples. Ideally, this test would be done with a paired data, but we only have both tissue types collected from the same individuals for 2 birds.
-
--   **Latitude v. infection status (MW-U & χ2)**
-
-    -   All vireos: Significantly more infected vireos at higher latitude; p-value = 3e-04, r=0.23 (small effect size). Even after removing GRVI Utah samples (11/11 infected), this relationship remains significant.
-
-    -   BEVI: The two groups have the same distribution; there is no difference in latitude between infected and uninfected Bell's; p-value = 0.052.
-
-    -   GRVI: Significantly more infected Grays at higher latitude (38 degrees) compared to lower latitude (32 degrees); p-value = 0.042, w=0.16 (small effect size). There are only two values here, however, so caution is needed when interpretting these results. Strongly influenced by the 11/11 infected Utah samples.
-
-    -   PLVI: The two groups have the same distribution; there is no difference in latitude between infected and uninfected Plumbeous.
-
--   **Elevation v. infection status (Permutation)**
-
-    -   All vireos: The two groups have the same distribution; there is no systematic difference in elevation between infected and uninfected.
-
-    -   BEVI: The two groups have the same distribution; there is no systematic difference in elevation between infected and uninfected Bell's.
-
-    -   GRVI: Significantly more infected Grays at lower elevation; p-value = 0.038, r = 0.159 (small effect size). However when removing the 11 Utah samples, this pattern does not hold and there is no difference in elevation between infected and uninfected Grays.
-
-    -   PLVI: The two groups have the same distribution; there is no difference in elevation between infected and uninfected Plumbeous. However, if we ignore the non-normal distribution and run a t-test without Embudo, we do see a significant difference in the mean between infected and unifected (p-value = 0.02). We should not ignore abnormal distribution, however, and therefore should stick with non-parametric analysis.
-
--   **TPC1 v. infection status (MW-U)**
-
-    -   All vireos: Significantly more infected vireos at higher TPC1; p-value = 0.038, r = 0.159 (small effect size).
-
-    -   BEVI: The two groups have the same distribution; there is no difference in TPC1 between infected and uninfected Bell's.
-
-    -   GRVI: There is no variation within this species to compare.
-
-    -   PLVI: The two groups have the same distribution; there is no difference in TPC1 between infected and uninfected Plumbeous.
-
--   **TPC2 v. infection status (MW-U & χ2)**
-
-    -   All vireos: The two groups have the same distribution; there is no difference in TPC2 between infected and uninfected vireos.
-
-    -   BEVI: The two groups have the same distribution; there is no difference in TPC2 between infected and uninfected Bell's.
-
-    -   GRVI: Significantly more infected GRVi at higher TPC2; p-value = 0.0415, w = -0.182.
-
-    -   PLVI: The two groups have the same distribution; there is no difference in TPC2 between infected and uninfected Plumbeous.
-
--   **PPC1 v. infection status (MW-U)**
-
-    -   All vireos: The two groups have the same distribution; there is no difference in PPC1 between infected and uninfected vireos, overall.
-
-    -   BEVI: Significantly more infected Bell's at higher PPC1 with a large effect size; p-value = 0.013, r = 0.563.
-
-    -   GRVI: Significantly lower PPC1 in infected GRVI with a small effect size; p-value = 0.004, r = 0.219
-
-    -   PLVI: The two groups have the same distribution; there is no difference in PPC1 between infected and uninfected Plumbeous.
-
--   **PPC2 v. infection status (MW-U & χ2)**
-
-    -   All vireos: Significantly more infected vireos at higher PPC2, with a small effect size; p-value = 0.002, r = 0.192.
-
-    -   BEVI: The two groups have the same distribution; there is no difference in PPC2 between infected and uninfected Bell's.
-
-    -   GRVI: Significantly more infected Grays at higher PPC2, with a small effect size; p-value = 0.042, r = 0.182.
-
-    -   PLVI: The two groups have the same distribution; there is no difference in PPC2 between infected and uninfected Plumbeous.
-
-## -----------------------------------------------
+Code last updated: 7/17/2025
 
 # Load libraries
 
 ```{r}
-library(devtools)
 library(dplyr)
-library(tidyverse)
 library(car)
-library(GGally)
 library(stats)
-library(gplots)
 library(ggplot2)
 library(ggpubr)
 library(rstatix)
 library(effectsize)
-library(arm) 
-library(ggfortify)
 library(erikmisc)
 library(rcompanion)
 library(binom)
-library(ggeasy) #To easily remove y-axis or x-axis only
+library(performance)
+library(boot)
+library(MuMIn)
+library(patchwork)
+library(ggeasy)
+library(ggfortify)
+library(AICcmodavg)
+library(GGally)
+library(caret)
+library(ResourceSelection)
 ```
 
 # Load prevalence data
 
-Code last updated 3/12/2025
+Code last updated 6/23/2025
 
 ```{r}
-# As of 21 November, 2024, these data sets are final. This version includes all 19 BioClim variables and 1 elevation variable.
+# As of 20 June, 2025, these data sets are final. This version includes all 19 BioClim variables and 1 elevation variable.
 
 #Infection prevalence data sets:---------------------------------------------------
 
 setwd("/Users/danie/Desktop/BarrowLab/Projects/VireoMalaria/FigShare/")
 #Haemoproteous prevalence data set:
-df_p_hp <- read.csv("Host_Sample_Dataset.csv")
-df_p_hp <- filter(df_p_hp, !is.na(df_p_hp$Haem_01))
+df <- read.csv("Host_Sample_Dataset.csv")
+df <- filter(df, !is.na(df$Haem_01))
 
 #CLASSIFICATION OF VARIABLES ------------------------
 #Making sure our variables are correctly classified.
-df_p_hp$common_name       <- as.factor(df_p_hp$common_name)
-df_p_hp$county            <- as.factor(df_p_hp$county)
-df_p_hp$coll_date         <- as.factor(df_p_hp$Haem_01)
-df_p_hp$coll_year         <- as.factor(df_p_hp$coll_year)
-df_p_hp$analysis_lat      <- as.integer(df_p_hp$analysis_lat)
-df_p_hp$tissue_type       <- as.factor(df_p_hp$tissue_type)
-df_p_hp$Haem_01           <- as.factor(df_p_hp$Haem_01)
-df_p_hp$Plas_01           <- as.factor(df_p_hp$Plas_01)
-df_p_hp$coinfection_01    <- as.factor(df_p_hp$coinfection_01)
-df_p_hp$analysis_elev     <- as.integer(df_p_hp$analysis_elev)
-df_p_hp$tempPC1           <- as.integer(df_p_hp$tempPC1)
-df_p_hp$tempPC2           <- as.integer(df_p_hp$tempPC2)
-df_p_hp$precipPC1         <- as.integer(df_p_hp$precipPC1)
-df_p_hp$precipPC2         <- as.integer(df_p_hp$precipPC2)
+df$common_name       <- as.factor(df$common_name)
+df$county            <- as.factor(df$county)
+df$coll_date         <- as.factor(df$Haem_01)
+df$coll_year         <- as.factor(df$coll_year)
+df$tissue_type       <- as.factor(df$tissue_type)
+df$Haem_01           <- as.factor(df$Haem_01)
+df$Plas_01           <- as.factor(df$Plas_01)
+df$coinfection_01    <- as.factor(df$coinfection_01)
 
 #CREATION OF TISSUE TYPES DATAFRAMES FOR COMPARISON -----------------------------------------------
 
-Hp_musc_tiss <- subset(df_p_hp
-                       , df_p_hp$tissue_type == "pectoral muscle")
-Hp_blood_tiss <- subset(df_p_hp
-                       , df_p_hp$tissue_type == "whole blood")
+Hp_musc_tiss <- subset(df
+                       , df$tissue_type == "pectoral muscle")
+Hp_blood_tiss <- subset(df
+                       , df$tissue_type == "whole blood")
 
 #MUTATION OF SPECIES DATAFRAMES FOR ANALYSIS--------------------------------------
 #To compare species infection status, we need to create dataframes that include only species with at least 1 positive case.
 #Br---------------------------------------------------------------------
-table(df_p_hp$common_name, df_p_hp$Haem_01)
+table(df$common_name, df$Haem_01)
   #                   0   1
-  # Bell's Vireo      9  11
-  # Gray Vireo       55 115
-  # Plumbeous Vireo   9  49
+  # Bell's vireo      9  11
+  # gray vireo       55 115
+  # plumbeous vireo   9  49
 ```
 
 ## -----------------------------------------------
 
 ## PT 1 START:
 
-Note about effect size: Effect size with contingency tables larger than 2x2 will be calculated with CramerV function (species comparison). Whereas 2x2 contingency tables will be calculated by phi function (all other chi-squared).
+Note about effect size for binomial response: Effect size with contingency tables larger than 2x2 will be calculated with CramerV function (e.g. ANOVA, MW-U), whereas 2x2 contingency tables will be calculated by phi function (for chi-squared).
 
 # Species v infection status
 
@@ -188,20 +107,20 @@ Note about effect size: Effect size with contingency tables larger than 2x2 will
 # Hypothesis (null): Observed and expected infection status counts do not differ across species.
 # Run chi-square test with the above calculated contingency table 
 ##Hp-----------------------------------------
-Hp.Sp.chi <- chisq.test(table(df_p_hp$common_name, df_p_hp$Haem_01))
+Hp.Sp.chi <- chisq.test(table(df$common_name, df$Haem_01))
 Hp.Sp.chi
 # 	Pearson's Chi-squared test
 # 
-# data:  table(df_p_hp$common_name, df_p_hp$Haem_01)
+# data:  table(df$common_name, df$Haem_01)
 # X-squared = 8.4385, df = 2, p-value = 0.01471
 
 ##Hp-----------------------------------------
-Sp.Hp.table <- chisq.test(table(df_p_hp$common_name, df_p_hp$Haem_01))$expected 
+Sp.Hp.table <- chisq.test(table(df$common_name, df$Haem_01))$expected 
 Sp.Hp.table
   #                         0         1
-  # Bell's Vireo     5.887097  14.11290  
-  # Gray Vireo      50.040323 119.95968
-  # Plumbeous Vireo 17.072581  40.92742
+  # Bell's vireo     5.887097  14.11290  
+  # gray vireo      50.040323 119.95968
+  # plumbeous vireo 17.072581  40.92742
 
 #save p-value for figure
 HpSp_pearsons.p <- Hp.Sp.chi$p.value
@@ -209,8 +128,10 @@ HpSp_pearsons.p <- Hp.Sp.chi$p.value
 #calculate effect size
 #Cramer's V is used when calculating the effect size of a 3x2 contingency table. More info, including how to interpret effect size based on degrees of freedom:
  
-HpSp_effsize.s <- cramerV(df_p_hp$common_name, df_p_hp$Haem_01)
-print(HpSp_effsize.s)
+HpSp_effsize.s <- cramerV(df$common_name, df$Haem_01)
+HpSp_pearsons.p
+# 0.0147095
+HpSp_effsize.s
 # Cramer V 
 #   0.1845
 ```
@@ -220,14 +141,14 @@ print(HpSp_effsize.s)
 ```{r}
 #--------
 #Let's check the relationships between groups.
-#p-value for 95% significance with three comparisons (bonferonni correction) is 0.05/3 = 0.01666667, or 0.017)
+#p-value for 95% significance with three comparisons (Bonferonni correction) is 0.05/3 = 0.01666667, or 0.017)
 
 #Prep data:
-df_p_hp$common_name <- as.character(df_p_hp$common_name)
-BEVI_GRVI_chi.df <- df_p_hp[-(which(df_p_hp$common_name %in% "Plumbeous Vireo")),] #190
-BEVI_PLVI_chi.df <- df_p_hp[-(which(df_p_hp$common_name %in% "Gray Vireo")),] #78
-GRVI_PLVI_chi.df <- df_p_hp[-(which(df_p_hp$common_name %in% "Bell's Vireo")),] #228
-df_p_hp$common_name <- as.factor(df_p_hp$common_name)
+df$common_name <- as.character(df$common_name)
+BEVI_GRVI_chi.df <- df[-(which(df$common_name %in% "plumbeous vireo")),] #190
+BEVI_PLVI_chi.df <- df[-(which(df$common_name %in% "gray vireo")),] #78
+GRVI_PLVI_chi.df <- df[-(which(df$common_name %in% "Bell's vireo")),] #228
+df$common_name <- as.factor(df$common_name)
 
 #-----------
 #BEVI vs GRVI
@@ -280,17 +201,17 @@ corrplot(Hp.Sp.chi$residuals,
 #Positive residuals are in blue. Positive values in cells specify an attraction (positive association) between the corresponding row and column variables. Negative residuals are in red. This implies a repulsion (negative association) between the corresponding row and column variables.
 ```
 
-Bell's and Gray vireos have more uninfected than expected, while Plumbeous has more infected than expected.
+Bell's and gray vireos have more uninfected than expected, while plumbeous has more infected than expected.
 
 ## Binomial confidence intervals
 
 Explore binomial confidence intervals using {binom}, similar to Mario Alvarado‑Rybak et al., 2021.
 
-We estimated 95% binomial confidence interval (95% CI) with a logistic (logit) parameterization for each category using the binom.confint function (R package ‘binom’) in the statistical software R v.3.1.397.
+We estimated 95% binomial confidence interval (95% CI) with a logistic (logit) parameterization for each category using the binom.confint function (R package ‘binom’).
 
 ```{r}
 library(binom)
-#Uses eight different methods to obtain a confidence interval on the binomial probability.
+#Uses exact method to obtain a confidence interval on the binomial probability.
 #x = number of infected in specific species
 #n = number of trails (total) in specific species
 #ALL VIREOS, BY NUMBER OF BIRDS INFECTED TOTAL--------
@@ -302,38 +223,22 @@ Hp_bybird_bc
 #   method   x   n      mean     lower     upper
 # 1  exact 175 248 0.7056452 0.6446804 0.7616177
 #SINGLE INFECTIONS, BY NUMBER OF BIRDS INFECTED TOTAL--------
-table(df_p_hp$coinfection_01)
+table(df$coinfection_01)
 Hp_single_x <- 155
-Hp_single_n <- 175
+Hp_single_n <- 176
 Hp_single_bc <- binom.confint(
   Hp_single_x, Hp_single_n, conf.level = 0.95, methods = "exact")
 Hp_single_bc 
 #   method   x   n      mean    lower     upper
-# 1  exact 155 175 0.8857143 0.829024 0.9287768
+# 1  exact 155 176 0.8806818 0.8234071 0.924601
 #COINFECTIONS, BY NUMBER OF BIRDS INFECTED TOTAL--------
 Hp_coinfect_x <- 21
-Hp_coinfect_n <- 175
+Hp_coinfect_n <- 176
 Hp_coinfect_bc <- binom.confint(
   Hp_coinfect_x, Hp_coinfect_n, conf.level = 0.95, methods = "exact")
 Hp_coinfect_bc 
 #   method  x   n mean      lower     upper
-# 1  exact 21 175 0.12 0.07583846 0.1775684
-#PARAHAEMOPROTEOUS, BY THE TOTAL DISTINGUISHABLE HAPLOTYPE COUNTS----------
-Php_x <- 195
-Php_n <- 196
-Php_bc <- binom.confint(
-  Php_x, Php_n, conf.level = 0.95, methods = "exact")
-Php_bc 
-#   method   x   n     mean     lower     upper
-# 1  exact 195 196 0.994898 0.9719026 0.9998708
-#NOVEL HAPLOTYPES, BY TOTAL HAPLOTYPE LINEAGES----------
-N_hp_x <- 8
-N_hp_n <- 19
-N_hp_bc <- binom.confint(
-  N_hp_x, N_hp_n, conf.level = 0.95, methods = "exact")
-N_hp_bc 
-#   method x  n      mean     lower     upper
-# 1  exact 8 19 0.4210526 0.2025214 0.6650022
+# 1  exact 21 176 0.1193182 0.07539834 0.1765929
 #BEVI--------------
 Bell_hp_x <- 11
 Bell_hp_n <- 20
@@ -381,10 +286,10 @@ Figure 1 Panel b
 error_c <- c("#F9F0CA","#F3DA44","black","#D8D8D6","#A0A0A0","#D7EDF9","#89B8EB", "black" ) #When geom_errorbar is added, we need 2 more colors (8 required), but they don't show up on the actual barplot.
 Spp_c <- c("#F9F0CA","#F3DA44","#D8D8D6","#A0A0A0","#D7EDF9","#89B8EB") #original color scale for Spp
 #color palette for plot
-#df_p_hp$Haem_01 <- forcats::fct_relevel(df_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
-df_p_hp$Species_Status <- paste(df_p_hp$common_name, df_p_hp$Haem_01, sep = "_")
+#df$Haem_01 <- forcats::fct_relevel(df$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
+df$Species_Status <- paste(df$common_name, df$Haem_01, sep = "_")
 #Create dataframe with proportions so we can plot the binomial confidence intervals as error bars
-df_p_hp_proportions <- df_p_hp %>%
+df_proportions <- df %>%
   group_by(common_name) %>%
   summarize(
     InfectedCount = sum(Haem_01 == "1"),
@@ -392,14 +297,14 @@ df_p_hp_proportions <- df_p_hp %>%
     Proportion = InfectedCount / TotalCount,  # Proportion of infected
     .groups = 'drop'  # Drop grouping column for clean data frame
   )
-df_p_hp_proportions
-table(df_p_hp$Species_Status)
+df_proportions
+table(df$Species_Status)
 
 df_ci <- data.frame(
-  Species_Status = c("Bells Vireo_1", 
-                     "Gray Vireo_1", 
-                     "Plumebous Vireo_1"),
-  common_name = c("Bell's Vireo", "Gray Vireo", "Plumbeous Vireo"),
+  Species_Status = c("Bells vireo_1", 
+                     "gray vireo_1", 
+                     "plumbeous vireo_1"),
+  common_name = c("Bell's vireo", "gray vireo", "plumbeous vireo"),
   Haem_01 = c("1", "1", "1"),
   Proportion = c(0.55, 0.676, 0.845),
   Lower_CI = c(Bell_up, Gray_up, Plum_up),
@@ -408,7 +313,7 @@ df_ci <- data.frame(
 
 #Plot:
 # Create a proportion bar chart
-Hp_Spp_bar <- ggplot(df_p_hp, 
+Hp_Spp_bar <- ggplot(df, 
                      aes(x = as.factor(common_name), fill = Species_Status)) +
   geom_bar(position = "fill", color='black',width=0.9) + 
   scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
@@ -441,7 +346,7 @@ plot(Hp_Spp_bar)
 
 # Tissue type v pathogen status
 
-## Tissue Type: Not Significant χ2 (p-value = 0.095, w = -0.115)
+# Tissue Type: Not Significant χ2 (p-value = 0.095, w = 0.10)
 
 ```{r}
 # Hypothesis (null): Observed and expected infection status counts do not differ across tissue types.
@@ -450,7 +355,7 @@ plot(Hp_Spp_bar)
 # Begin by making a contingency table, assign to a variable for easier manipulation
 
 #Hp-----------------------------------------
-tiss.Hp.table <- table(df_p_hp$tissue_type, df_p_hp$Haem_01)
+tiss.Hp.table <- table(df$tissue_type, df$Haem_01)
 tiss.Hp.table
   #                   0   1
   # pectoral muscle  18  64
@@ -467,7 +372,7 @@ Hp.tiss.chi
 TissHp_effectsize.s <- phi(tiss.Hp.table)
 TissHp_effectsize.s
    # phi 
-# -0.115
+# 0.10
 ```
 
 ```{r fig.width = 5, fig.height= 5}
@@ -482,121 +387,121 @@ corrplot(Hp.tiss.chi$residuals,
 
 A trend that whole blood has more Hp negative samples, but the p value is not significant.
 
-## -----------------------------------------------
+# -----------------------------------------------
 
-## One way tests for environmental variables + response variables
+# Univariate hypothesis tests for environmental variables
 
-## -----------------------------------------------
+# -----------------------------------------------
 
-# Latitude v Status
+## Latitude v Status
 
-Because each of these species have distinct distributions, we need to run each analyses BY SPECIES.
+### All vireos: Significant; MW-U (p-value = 0.002; r= 0.201)
 
-Latitudinal variation in the dataset are discrete and not continuous, though we assume populations are normally distributed across continuous latitudes within their range distributions in nature. The data being collected at discrete sites, however, show a pattern of non-normal distributions. Therefore, the Mann-Whitney test (Wilcoxon signed-rank test) should be used.The unpaired two-samples Wilcoxon test (also known Mann-Whitney test) is a non-parametric alternative to the unpaired two-samples t-test, which can be used to compare two independent groups of samples. It’s used when your data are not normally distributed. More info here: https://datatab.net/tutorial/wilcoxon-test
+### BEVI: Significant; MW-U (p-value = 0.040; r = 0.467)
 
-Null hypothesis: The two groups have the same distribution; there is no systematic difference in ranks. Alternative hypothesis: One group has systematically higher or lower values than the other.
+### GRVI: NOT significant; MW-U (p-value = 0.086; r = 0.132)
 
-## All Vireos: Significant MW-U (p-value = 0.0003, r = 0.230)
+### PLVI: NOT significant; MW-U (p-value = 0.119; r = 0.206)
 
--   There is a significant difference between latitude and infected status, seems to correlate with .
+All vireos:
 
 ```{r}
 #Data prep:
-df_p_pos <- filter(df_p_hp, df_p_hp$Haem_01 =="1") #175
-df_p_neg <- filter(df_p_hp, df_p_hp$Haem_01 =="0") #73
+df_p_pos <- filter(df, df$Haem_01 =="1") #175
+df_p_neg <- filter(df, df$Haem_01 =="0") #73
 
 shapiro.test(df_p_pos$analysis_lat)
 # 	Shapiro-Wilk normality test
 # 
 # data:  df_p_pos$analysis_lat
-# W = 0.72434, p-value < 2.2e-16
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.77655, p-value = 4.639e-15
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(df_p_neg$analysis_lat)
 # 	Shapiro-Wilk normality test
 # 
 # data:  df_p_neg$analysis_lat
-# W = 0.55349, p-value = 1.467e-13
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.72043, p-value = 1.728e-10
+# FAILED - NOT NORMAL; USE MW-U
 
-qqPlot(df_p_hp$analysis_lat)
-#Discrete latitudes, not normally distributed.
+qqPlot(df$analysis_lat)
+# not normally distributed
 
 # Wilcoxon Rank-Sum Test if data are not normal
-HpLat_wilcox.prev <- wilcox.test(analysis_lat ~ Haem_01, data = df_p_hp, exact = FALSE)
+HpLat_wilcox.prev <- wilcox.test(analysis_lat ~ Haem_01, data = df, exact = FALSE)
 HpLat_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  analysis_lat by Haem_01
-# W = 7878, p-value = 0.0003011
+# W = 4758, p-value = 0.001552
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
 HpLat_wilcox.prev.p <-HpLat_wilcox.prev$p.value
 
 #Calculate effect size
-HpLat_effsize <- wilcox_effsize(df_p_hp, analysis_lat ~ Haem_01, alternative = "two.sided")
+HpLat_effsize <- wilcox_effsize(df, analysis_lat ~ Haem_01, alternative = "two.sided")
 print(HpLat_effsize)
 #save effect size
 # A tibble: 1 × 7
 #   .y.          group1 group2 effsize    n1    n2 magnitude
 # * <chr>        <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 analysis_lat 0      1        0.230    73   175 small    
+# 1 analysis_lat 0      1        0.201    73   175 small    
 HpLat_effsize.s <- HpLat_effsize$effsize
-
+# stats
+HpLat_wilcox.prev.p
+# [1] 0.001551887
+HpLat_effsize.s
+# 0.2010268
 #--------------------------------------------------------
 #WITHOUT GRVI UTAH SAMPLES (11/11 INFECTED) at 38 latitude
-df_p_hp1 <- filter(df_p_hp, df_p_hp$analysis_lat < 38) #237
-df_p_pos1 <- filter(df_p_pos, df_p_pos$analysis_lat < 38) #164
-df_p_neg1 <- filter(df_p_neg, df_p_neg$analysis_lat < 38) #73
+df1 <- filter(df, df$state != "Utah") #237
+df_p_pos1 <- filter(df_p_pos, df_p_pos$state != "Utah") #164
+df_p_neg1 <- filter(df_p_neg, df_p_neg$state != "Utah") #73
 
 shapiro.test(df_p_pos1$analysis_lat)
 # 	Shapiro-Wilk normality test
 # 
 # data:  df_p_pos1$analysis_lat
-# W = 0.73438, p-value = 6.802e-16
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.8206, p-value = 6.461e-13
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(df_p_neg1$analysis_lat)
 # 	Shapiro-Wilk normality test
 # 
-# data:  df_p_neg$analysis_lat
-# W = 0.55349, p-value = 1.467e-13
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-qqPlot(df_p_hp$analysis_lat)
-#Discrete latitudes, not normally distributed.
+# data:  df_p_neg1$analysis_lat
+# W = 0.72043, p-value = 1.728e-10
+# FAILED - NOT NORMAL; USE MW-U
 
 # Wilcoxon Rank-Sum Test if data are not normal
-HpLat_wilcox.prev1 <- wilcox.test(analysis_lat ~ Haem_01, data = df_p_hp1, exact = FALSE)
+HpLat_wilcox.prev1 <- wilcox.test(analysis_lat ~ Haem_01, data = df1, exact = FALSE)
 HpLat_wilcox.prev1
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  analysis_lat by Haem_01
-# W = 7075, p-value = 0.003604
-# alternative hypothesis: true location shift is not equal to 0
+# W = 4758, p-value = 0.01175
+# alternative hypothesis: true location shift is not equal to 0 
+# SIGNIFICANT DIFFERENCE
 
 #save p-value for plots
 HpLat_wilcox.prev.p <-HpLat_wilcox.prev$p.value
 
 #Calculate effect size
-HpLat_effsize1 <- wilcox_effsize(df_p_hp, analysis_lat ~ Haem_01, alternative = "two.sided")
+HpLat_effsize1 <- wilcox_effsize(df, analysis_lat ~ Haem_01, alternative = "two.sided")
 print(HpLat_effsize1)
 # # A tibble: 1 × 7
 #   .y.          group1 group2 effsize    n1    n2 magnitude
 # * <chr>        <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 analysis_lat 0      1        0.230    73   175 small 
+# 1 analysis_lat 0      1        0.201    73   175 small 
 #save effect size
 HpLat_effsize1.s <- HpLat_effsize1$effsize
 ```
 
-## Bell's Vireo: Not significant MW-U (p-value = 0.052, r = 0.444)
-
--   There is NOT a significant difference between latitude and infected status.
+BEVI :
 
 ```{r}
 #Data prep:
-Bells_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Bell's Vireo")
+Bells_p_hp <- subset(df, df$common_name == "Bell's vireo")
 Bells_Hp_pos <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "1") #11
 Bells_Hp_neg <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "0") #9
 
@@ -604,32 +509,28 @@ shapiro.test(Bells_Hp_pos$analysis_lat)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Bells_Hp_pos$analysis_lat
-# W = 0.59999, p-value = 2.542e-05
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.71697, p-value = 0.0007741
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Bells_Hp_neg$analysis_lat)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Bells_Hp_neg$analysis_lat
-# W = 0.69305, p-value = 0.001177
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.75864, p-value = 0.006827
+# FAILED - NOT NORMAL; USE MW-U
 
 qqPlot(Bells_p_hp$analysis_lat)
-#Discrete latitudes, not normally distributed.
+# Not normally distributed.
 
 # Wilcoxon Rank-Sum Test if data are not normal
-BellsLat_wilcox.prev <- wilcox.test(analysis_lat ~ Haem_01, data = Bells_p_hp, exact = FALSE) #exact=FALSE to negate the warning:
-#"Warning message:
-#In wilcox.test.default(x = DATA[[1L]], y = DATA[[2L]], ...) :
-#cannot compute exact p-value with ties"
-#This warning doesn't invalidate the test; it's just letting you know that the p-value is approximate rather than exact.
-
+BellsLat_wilcox.prev <- wilcox.test(analysis_lat ~ Haem_01, data = Bells_p_hp, exact = FALSE) 
 BellsLat_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  analysis_lat by Haem_01
-# W = 25.5, p-value = 0.05191
+# W = 77, p-value = 0.04024
 # alternative hypothesis: true location shift is not equal to 0
+# SIGNIFICANT DIFFERENCE
 
 #save p-value for plots
 BellsLat_wilcox.prev.p <- BellsLat_wilcox.prev$p.value
@@ -637,63 +538,120 @@ BellsLat_wilcox.prev.p <- BellsLat_wilcox.prev$p.value
 #Calculate effect size
 BellsLat_effsize <- wilcox_effsize(Bells_p_hp, analysis_lat ~ Haem_01, alternative = "two.sided")
 print(BellsLat_effsize)
-# A tibble: 1 × 7
+# # A tibble: 1 × 7
 #   .y.          group1 group2 effsize    n1    n2 magnitude
 # * <chr>        <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 analysis_lat 0      1        0.444     9    11 moderate 
+# 1 analysis_lat 0      1        0.467     9    11 moderate 
 BellsLat_effsize.s <- BellsLat_effsize$effsize
+
+BellsLat_wilcox.prev.p
+# [1] 0.04023868
+BellsLat_effsize.s
+# Effect size (r) 
+#       0.4671766
+wilcoxonZ(Bells_Hp_pos$analysis_lat, Bells_Hp_neg$analysis_lat)
+#     z 
+# -2.09
 ```
 
-## Gray Vireo: Significant χ2 (p-value = 0.042, w = 0.182)
-
-There is not enough variation in groups across latitudes (32, 38 latitude with no variation in uninfected groups), so we will do a chi-squared test. - There is a significant difference between the two latitudes samples and infection status. - The probability of infection increases with latitude (visually seen in corrplot, but indistinguishable from locality variables due to lack of variation in latitude). - Specifically, this shows the high prevalence at the Utah sampling sites (11/11).
+GRVI:
 
 ```{r}
 # Null hypothesis: There is no significant difference in the mean latitude between infection status and latitude.
 #TEST FOR EQUAL VARIANCES BETWEEN INFECTED VS. UNINFECTED LATITUDE VALUES.
 
 #Prep data:
-Gray_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Gray Vireo")
+Gray_p_hp <- subset(df, df$common_name == "gray vireo") 
 Gray_Hp_pos <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "1") #115
 Gray_Hp_neg <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "0") #55
-qqPlot(Gray_p_hp$analysis_lat)
-#Discrete two levels of latitudes.
-#NOT ENOUGH VARIATION IN LATITUDE TO COMPARE THIS WAY. CONSIDER CHI-SQUARED WITH 38 AND 34 INFECTED VS. UNINFECTED 
-Gray_p_hp$analysis_lat <- as.factor(Gray_p_hp$analysis_lat)
 
-Gray.HpLat.chi <- chisq.test(table(Gray_p_hp$analysis_lat, Gray_p_hp$Haem_01))
-Gray.HpLat.chi
-# 	Pearson's Chi-squared test with Yates' continuity correction
+shapiro.test(Gray_p_hp$analysis_lat)
+# 	Shapiro-Wilk normality test
 # 
-# data:  table(Gray_p_hp$analysis_lat, Gray_p_hp$Haem_01)
-# X-squared = 4.1553, df = 1, p-value = 0.0415
+# data:  Gray_p_hp$analysis_lat
+# W = 0.30845, p-value < 2.2e-16
+# FAILED - NOT NORMAL; USE MW-U
 
-#SLIGHTLY SIGNIFICANT ()
-#save p-value
-GrayLat_pearson.p <- Gray.HpLat.chi$p.value
-#Phi is used when the contingency table is 2x2 (uninfected vs infected, 32 vs 38); where n = the number of observations. A value of .1 is considered a small effect, .3 a medium effect, and .5 a large effect.More info: https://real-statistics.com/chi-square-and-f-distributions/effect-size-chi-square/
-GrayLat_table <- table(Gray_p_hp$analysis_lat, Gray_p_hp$Haem_01)
-GrayLat_effectsize.s <- phi(GrayLat_table)
-GrayLat_effectsize.s
-#   phi 
-# 0.182 
+shapiro.test(Gray_p_hp$analysis_lat)
+# 	Shapiro-Wilk normality test
+# 
+# data:  Gray_p_hp$analysis_lat
+# W = 0.30845, p-value < 2.2e-16
+# FAILED - NOT NORMAL; USE MW-U
+
+qqPlot(Gray_p_hp$analysis_lat)
+#Not normally distributed.
+
+# Wilcoxon Rank-Sum Test if data are not normal
+GrayLat_wilcox.prev <- wilcox.test(analysis_lat ~ Haem_01, data = Gray_p_hp, exact = FALSE) 
+GrayLat_wilcox.prev
+# 	Wilcoxon rank sum test with continuity correction
+# 
+# data:  analysis_lat by Haem_01
+# W = 2646.5, p-value = 0.08571
+# alternative hypothesis: true location shift is not equal to 0
+# NOT SIGNIFICANT
+
+#save p-value for plots
+GrayLat_wilcox.prev.p <- GrayLat_wilcox.prev$p.value
+
+#Calculate effect size
+GrayLat_effsize <- wilcox_effsize(Gray_p_hp, analysis_lat ~ Haem_01, alternative = "two.sided")
+print(GrayLat_effsize)
+# # A tibble: 1 × 7
+#   .y.          group1 group2 effsize    n1    n2 magnitude
+# * <chr>        <chr>  <chr>    <dbl> <int> <int> <ord>    
+# 1 analysis_lat 0      1        0.132    55   115 small 
+GrayLat_effsize.s <- GrayLat_effsize$effsize
+
+GrayLat_wilcox.prev.p
+# [1] 0.08570774
+GrayLat_effsize.s
+# Effect size (r) 
+#       0.1319298
+wilcoxonZ(Gray_Hp_pos$analysis_lat, Gray_Hp_neg$analysis_lat)
+#    z 
+# 1.72 
+
+# NOT INCLUDING UTAH OUTLIERS:
+#Prep data:
+Gray_p_hp1 <- subset(Gray_p_hp, Gray_p_hp$state != "Utah") # remove outliers in Utah
+Gray_Hp_pos1 <- filter(Gray_p_hp1, Gray_p_hp1$Haem_01 == "1") #104
+Gray_Hp_neg1 <- filter(Gray_p_hp1, Gray_p_hp1$Haem_01 == "0") #55
+
+shapiro.test(Gray_p_hp1$analysis_lat)
+# 	Shapiro-Wilk normality test
+# 
+# data:  Gray_p_hp1$analysis_lat
+# W = 0.81289, p-value = 5.44e-13
+# FAILED - NOT NORMAL; USE MW-U
+
+shapiro.test(Gray_p_hp1$analysis_lat)
+# 	Shapiro-Wilk normality test
+# 
+# data:  Gray_p_hp1$analysis_lat
+# W = 0.81289, p-value = 5.44e-13
+# FAILED - NOT NORMAL; USE MW-U
+
+qqPlot(Gray_p_hp1$analysis_lat)
+#Not normally distributed.
+
+# Wilcoxon Rank-Sum Test if data are not normal
+GrayLat_wilcox.prev1 <- wilcox.test(analysis_lat ~ Haem_01, data = Gray_p_hp1, exact = FALSE) 
+GrayLat_wilcox.prev1
+# 	Wilcoxon rank sum test with continuity correction
+# 
+# data:  analysis_lat by Haem_01
+# W = 2646.5, p-value = 0.4402
+# alternative hypothesis: true location shift is not equal to 0
+# NOT SIGNIFICANT
 ```
 
-```{r fig.width = 5, fig.height= 5}
-#Hp-----------------------------------------------
-#Pearson's residuals of Chi-squared test
-library(corrplot)
-GrayHp.lat.corr <- "Pearson's Residual Score"
-corrplot(Gray.HpLat.chi$residuals, 
-         title = GrayHp.lat.corr,
-         is.cor = FALSE)
-```
-
-## Plumbeous Vireo: Significant MW-U (p-value = 0.022, r = 0.305)
+PLVI:
 
 ```{r}
 #Prep data:
-Plum_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Plumbeous Vireo")
+Plum_p_hp <- subset(df, df$common_name == "plumbeous vireo")
 Plum_Hp_pos <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "1") #49
 Plum_Hp_neg <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "0") #9
 
@@ -701,14 +659,14 @@ shapiro.test(Plum_Hp_pos$analysis_lat)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_pos$analysis_lat
-# W = 0.85553, p-value = 2.588e-05
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.91806, p-value = 0.002258
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Plum_Hp_neg$analysis_lat)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_neg$analysis_lat
-# W = 0.87282, p-value = 0.1318
+# W = 0.94288, p-value = 0.6125
 # PASSED - NORMAL; T-TEST can be used
 
 #Let's check the overall data pattern though:
@@ -716,11 +674,11 @@ shapiro.test(Plum_p_hp$analysis_lat)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_p_hp$analysis_lat
-# W = 0.87611, p-value = 2.622e-05
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.93383, p-value = 0.003514
+# FAILED - NOT NORMAL; USE MW-U
 
 qqPlot(Plum_p_hp$analysis_lat)
-#Discrete latitudes, not normally distributed.
+#Almost normally distributed, but not quite.
 
 # Wilcoxon Rank-Sum Test if data are not normal
 PlumLat_wilcox.prev <- wilcox.test(analysis_lat ~ Haem_01, data = Plum_p_hp, exact = FALSE) 
@@ -728,318 +686,216 @@ PlumLat_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  analysis_lat by Haem_01
-# W = 296.5, p-value = 0.08641
+# W = 147.5, p-value = 0.1194
 # alternative hypothesis: true location shift is not equal to 0
+# NOT SIGNIFICANT
 
 #save p-value for plots
 PlumLat_wilcox.prev.p <- PlumLat_wilcox.prev$p.value
 #Calculate effect size
 Plum_effsize <- wilcox_effsize(Plum_p_hp, analysis_lat ~ Haem_01, alternative = "two.sided")
 print(Plum_effsize)
-Plum_effsize.s <- Plum_effsize$effsize
 # # A tibble: 1 × 7
 #   .y.          group1 group2 effsize    n1    n2 magnitude
 # * <chr>        <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 analysis_lat 0      1        0.227     9    49 small   
+# 1 analysis_lat 0      1        0.206     9    49 small  
+Plum_effsize.s <- Plum_effsize$effsize
 
-#There is one outlier point in our data (see below for more details), with a unique location and uninfected status. We remove this point below for elevation analysis - so we should exclude from all data.
-
-#Prep data:
-Plum_p_hp1   <- filter(Plum_p_hp, Plum_p_hp$analysis_elev > 2000)
-Plum_Hp_pos1 <- filter(Plum_p_hp1, Plum_p_hp1$Haem_01 == "1") #49
-Plum_Hp_neg1 <- filter(Plum_p_hp1, Plum_p_hp1$Haem_01 == "0") #9
-
-shapiro.test(Plum_Hp_pos1$analysis_lat)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_Hp_pos1$analysis_lat
-# W = 0.85553, p-value = 2.588e-05
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-shapiro.test(Plum_Hp_neg1$analysis_lat)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_Hp_neg1$analysis_lat
-# W = 0.81042, p-value = 0.03697
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-qqPlot(Plum_p_hp1$analysis_lat)
-#Discrete latitudes, not normally distributed.
-
-# Wilcoxon Rank-Sum Test if data are not normal
-PlumLat_wilcox.prev1 <- wilcox.test(analysis_lat ~ Haem_01, data = Plum_p_hp1, exact = FALSE) 
-PlumLat_wilcox.prev1
-# 	Wilcoxon rank sum test with continuity correction
-# 
-# data:  analysis_lat by Haem_01
-# W = 290.5, p-value = 0.02215
-# alternative hypothesis: true location shift is not equal to 0
-
-#save p-value for plots
-PlumLat_wilcox.prev1.p <- PlumLat_wilcox.prev1$p.value
-#Calculate effect size
-Plum_effsize1 <- wilcox_effsize(Plum_p_hp1, analysis_lat ~ Haem_01, alternative = "two.sided")
-print(Plum_effsize1)
-# A tibble: 1 × 7
-#   .y.          group1 group2 effsize    n1    n2 magnitude
-# * <chr>        <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 analysis_lat 0      1        0.305     8    49 moderate 
-
-Plum_effsize1.s <- Plum_effsize1$effsize
+PlumLat_wilcox.prev.p
+# [1] 0.1194409
+Plum_effsize$effsize
+# Effect size (r) 
+#       0.2058706 
+wilcoxonZ(Plum_Hp_pos$analysis_lat, Plum_Hp_neg$analysis_lat)
+#    z 
+# 1.57 
 ```
 
-## Visualization
+# Visualization
 
-Figure S2 A-D: Latitude vs.Hp infection status by host species
+Color-palette
 
 ```{r}
-# Box Plot: ALL infected/uninfected 
-#Prep work:
-Hp_c <- c("#C5D8CF", "#4F6D5A") #creates color palette for plot
-#df_p_hp$Haem_01 <- forcats::fct_relevel(df_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
-
-#Plot:
-# Create a proportion bar chart
-Hp_Lat_bar <- ggplot(df_p_hp, 
-                     aes(x = as.factor(analysis_lat), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Hp_c) + # Apply custom colors
-  labs(x = "Latitude (degrees)",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected vireos by latitude") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") +
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "p = ", signif(HpLat_wilcox.prev.p, 2), 
-                  " r = ", signif(HpLat_effsize.s, 2)), 
-                hjust = 1.1, vjust = 1.1, size = 4.5, color = "black", fontface = "italic")  # Add p-value annotation
-plot(Hp_Lat_bar)
-#ggsave(Hp_Lat_bar, filename="FigS2_AllSpp_Barplots_Lat_20241224.pdf", bg="transparent", height=4.5, width=6, units="in")
-#------------------------------------------------
-#BEVI
-#Prep work:
-Bell_c <- c("#F9F0CA","#F3DA44") #creates color palette for plot
-#library(forcats)
-#Bells_p_hp$Haem_01 <- forcats::fct_relevel(Bells_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
-
-#Plot:
-# Create a proportion bar chart
-Bells_Lat_bar <- ggplot(Bells_p_hp, 
-                     aes(x = as.factor(analysis_lat), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Bell_c) + # Apply custom colors
-  labs(y = "Proportion") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  #theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Bell's p = ", signif(BellsLat_wilcox.prev.p, 2), 
-                  " r = ", signif(BellsLat_effsize.s, 2)), 
-                hjust = 1.1, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") #+ # Add p-value & effect size annotation
-#   easy_remove_axes(
-#   which = "y",
-#   teach = FALSE
-# )
-Bells_Lat_bar
-
-#----------------------------------------------------------
-#GRVI
-#Prep work:
-Gray_c <-c("#D8D8D6","#A0A0A0") #creates color palette for plot
-#Gray_p_hp$Haem_01 <- forcats::fct_relevel(Gray_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
-Gray_p_hp$analysis_lat <- as.integer(as.character(Gray_p_hp$analysis_lat)) #change analysis_lat back into continuous variable instead of factor which was used in the chi-squared comparison above.
-
-#Plot: 
-# Create a proportion bar chart
-Gray_Lat_bar <- ggplot(Gray_p_hp, 
-                     aes(x = as.factor(analysis_lat), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  #geom_text(aes(label = paste0(Haem_01*100,"%")), 
-   #         position = position_stack(vjust = 0.5), size = 2) +
-  scale_fill_manual(values = Gray_c) + # Apply custom colors
-  #labs(x = "Latitude (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Gray vireos by latitude") +
-  theme_minimal() +
-  #theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-  #      plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Gray p = ", signif(GrayLat_pearson.p, 2), 
-                  " w = ", signif(GrayLat_effectsize.s, 2)), 
-                hjust = 1.4, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") + # Add p-value & effect size annotation
-easy_remove_axes(
-  which = "y",
-  teach = FALSE
-)
-Gray_Lat_bar
-
-#----------------------------------------------------------
-#PLVI
-#Prep work:
-Plum_c <-c("#D7EDF9","#89B8EB")#creates color palette for plot
-#Plum_p_hp1$Haem_01 <- forcats::fct_relevel(Plum_p_hp1$Haem_01, "1","0")  #flips x-axis factor levels so infected points are plotted first
-
-#Plot:
-# Create a proportion bar chart (without Embudo outlier point)
-Plum_Lat_bar <- ggplot(Plum_p_hp1, 
-                     aes(x = as.factor(analysis_lat), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Plum_c) + # Apply custom colors
-  #labs(x = "Latitude (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Plumbeous vireos by latitude") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Plumbeous p = ", signif(PlumLat_wilcox.prev1.p, 2), 
-                  " r =", signif(Plum_effsize1.s, 2)), 
-                hjust = 1.05, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") +
-  easy_remove_axes(
-  which = "y",
-  teach = FALSE
-)# Add p-value annotation
-Plum_Lat_bar
-
-# PLOT ALL PANELS TOGETHER 
-library(patchwork)
-# Alternative layout option = BETTER, USE THIS ONE:
-combined_plot <- ((Hp_Lat_bar) / 
-                   (Bells_Lat_bar + 
-                   Gray_Lat_bar + 
-                   Plum_Lat_bar)) + 
-  plot_annotation(theme = theme_minimal())
-combined_plot <- combined_plot + theme(aspect.ratio = 1) 
-plot(combined_plot)
- ggsave(combined_plot, filename="FigS2.pdf", bg="transparent", height=10, width=10, units="in")
+#Visualize dataset
+#Set colors for pathogen comparisons
+Hp_c <- c("#C5D8CF", "#4F6D5A")
+BEVI_c <- c("#F9F0CA","#F3DA44")
+GRVI_c <-c("#D8D8D6","#A0A0A0")
+PLVI_c <-c("#D7EDF9","#89B8EB")
 ```
 
-## -----------------------------------------------
+Species-specific box plots
+
+```{r}
+custom_fill_colors <- c(
+  "Bell's vireo.0" = BEVI_c[1],
+  "Bell's vireo.1" = BEVI_c[2],
+  "gray vireo.0"   = GRVI_c[1],
+  "gray vireo.1"   = GRVI_c[2],
+  "plumbeous vireo.0" = PLVI_c[1],
+  "plumbeous vireo.1" = PLVI_c[2]
+)
+
+df$Haem_01 <- factor(df$Haem_01, levels = c("1", "0"))
+species_lat_prev_facet <- ggplot(
+  df, aes(x = Haem_01, y = analysis_lat, fill = interaction(common_name, Haem_01))) +
+  geom_boxplot(
+    width = 0.8,  # wider boxes
+    size = 0.8,
+    outlier.shape = NA,
+    position = position_dodge(width = 3)) +
+  geom_jitter(
+    width = 0.1,
+    height = 0,
+    size = 3,
+    alpha = 0.6,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+    ) +
+  scale_fill_manual(values = custom_fill_colors, guide = "none") +
+  scale_x_discrete(
+    labels = c("pos", "neg")) +
+  scale_y_continuous(limits = c(32, 38.5)) +
+  facet_wrap(~common_name, ncol = 3) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    panel.grid.major.y = element_line(color = "darkgray", size = 0.3, linetype = "dashed"),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.title.x = element_blank(),
+    strip.text = element_text(size = 13),
+    strip.background = element_blank(),     # Removes gray strip box
+    panel.spacing.x = unit(1, "lines"),     # Adjust inter-facet spacing
+    panel.border = element_blank(),         # Removes facet boxes
+    legend.position = "none") +
+  labs(y = "Latitude")
+species_lat_prev_facet
+```
+
+Overall box plots:
+
+```{r}
+df$Haem_01 <- factor(df$Haem_01, levels = c("1", "0"))  # Add again if reloaded/changed
+overall_lat_prev_plot <- ggplot(
+  df, aes(x = Haem_01, y = analysis_lat, fill = Haem_01)) +
+  geom_boxplot(
+    width = 0.8,
+    size = 0.8,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    width = 0.1,
+    height = 0,
+    size = 3,
+    alpha = 0.6,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+  ) +
+  scale_fill_manual(values = c("0" = "#C5D8CF", "1" = "#4F6D5A"), guide = "none") +  # overall palette
+  scale_x_discrete(
+    labels = c("pos", "neg")
+  ) +
+  scale_y_continuous(limits = c(32, 38.5)) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    panel.grid.major.y = element_line(color = "darkgray", size = 0.3, linetype = "dashed"),
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),         # remove x-axis labels here
+    axis.ticks.x = element_blank(),        # and tick marks
+    panel.border = element_blank(),
+    legend.position = "none") +
+  labs(title = "Infection status across latitudes")
+overall_lat_prev_plot
+```
+
+Figure S2 - latitude v. infection status
+
+```{r}
+# PLOT ALL PANELS TOGETHER 
+final_combined_plot <- overall_lat_prev_plot / species_lat_prev_facet +
+  plot_layout(heights = c(1, 1))
+final_combined_plot
+
+ggsave(final_combined_plot, filename="FigS2_box.pdf", bg="transparent", height=10, width=10, units="in")
+```
+
+# ----------------------------------------------
 
 # Elevation v Status
 
-## All vireos: Not signficant Permutation (p-value = 0.086, d = 0.068)
+## All vireos: NOT signficant; MW-U (p-value = 0.286, r = 0.068)
 
--   No significant difference in mean elevation between Hp infected and uninfected samples
--   Additionally, because each species is associated with a distinct elevational range, we cannot determine if species or elevation driving pattern.
+## BEVI: NOT significantt; MW-U (p-value = 0.148, r = 0.332)
+
+## GRVI: Significant; MW-U (p-value = 0.038, r = 0.159) (but driven by UT samples)
+
+## PLVI: NOT significantly; MW-U (p-value = 0.772, r = 0.039)
+
+All vireos:
 
 ```{r}
 #Prep data:
-df_p_pos <- filter(df_p_hp, df_p_hp$Haem_01 == "1")
-df_p_neg <- filter(df_p_hp, df_p_hp$Haem_01 == "0")
+df_p_pos <- filter(df, df$Haem_01 == "1")
+df_p_neg <- filter(df, df$Haem_01 == "0")
 
 shapiro.test(df_p_pos$analysis_elev)
 # 	Shapiro-Wilk normality test
 # 
 # data:  df_p_pos$analysis_elev
 # W = 0.90433, p-value = 3.119e-09
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(df_p_neg$analysis_elev)
 # 	Shapiro-Wilk normality test
 # 
 # data:  df_p_neg$analysis_elev
 # W = 0.79334, p-value = 9.656e-09
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# FAILED - NOT NORMAL; USE MW-U
 
-plotNormalHistogram(df_p_hp$analysis_elev) #NORMAL ENOUGH DISTRIBUTION
-qqPlot(df_p_hp$analysis_elev) #Fat tails, not within range
-# Fit a Box-Cox transformation to your data
-boxcox(lm(analysis_elev ~ 1, data = df_p_hp), lambda = seq(-2, 2, 0.1))
-#no transformations actually help
+plotNormalHistogram(df$analysis_elev) #NORMAL ENOUGH DISTRIBUTION
+qqPlot(df$analysis_elev) #Fat tails, not within range
 
-# 1. Permutation Tests
-set.seed(123)  # For reproducibility
-# Permutation tests are a non-parametric method to compute the test statistic (e.g., the difference between group means) from the actual data, then randomly shuffle the data to create a null distribution of the test statistic under the null hypothesis.
+# Wilcoxon Rank-Sum Test if data are not normal
+HpElev_wilcox.prev <- wilcox.test(analysis_elev ~ Haem_01, data = df, exact = FALSE)
+HpElev_wilcox.prev
+# 	Wilcoxon rank sum test with continuity correction
 # 
-# Permutation test for the difference in means between infected and uninfected
+# data:  analysis_elev by Haem_01
+# W = 5838, p-value = 0.286
+# alternative hypothesis: true location shift is not equal to 0
 
-# Load necessary library
-library(effsize)  # For Cliff's Delta
+#save p-value for plots
+HpElev_wilcox.prev.p <-HpElev_wilcox.prev$p.value
 
-# Observed difference in means
-observed_diff <- mean(df_p_pos$analysis_elev) - mean(df_p_neg$analysis_elev)
-
-# Calculate pooled standard deviation for Cohen's d
-n1 <- length(df_p_pos$analysis_elev)
-n2 <- length(df_p_neg$analysis_elev)
-sd1 <- sd(df_p_pos$analysis_elev)
-sd2 <- sd(df_p_neg$analysis_elev)
-pooled_sd <- sqrt(((n1 - 1) * sd1^2 + (n2 - 1) * sd2^2) / (n1 + n2 - 2))
-
-# Calculate Hedges' g using effsize::cohen.d()
-hedges_g <- cohen.d(df_p_pos$analysis_elev, df_p_neg$analysis_elev, hedges.correction = TRUE)
-
-# Calculate Cliff's Delta
-cliffs_delta <- cliff.delta(df_p_pos$analysis_elev, df_p_neg$analysis_elev)
-
-# Combine data and shuffle for permutation test
-combined_data <- c(df_p_pos$analysis_elev, df_p_neg$analysis_elev)
-n_permutations <- 10000  # Number of permutations
-permuted_diffs <- numeric(n_permutations)
-
-# Perform the permutations
-for (i in 1:n_permutations) {
-  shuffled_data <- sample(combined_data)
-  perm_group1 <- shuffled_data[1:n1]
-  perm_group2 <- shuffled_data[(n1 + 1):length(combined_data)]
-  permuted_diffs[i] <- mean(perm_group2) - mean(perm_group1)
-}
-
-# Calculate p-value (two-tailed test)
-p_value <- mean(abs(permuted_diffs) >= abs(observed_diff))
-
-# Compute 95% confidence interval from permuted differences
-ci_lower <- quantile(permuted_diffs, 0.025)
-ci_upper <- quantile(permuted_diffs, 0.975)
-
-# Print results
-cat("Observed Mean Difference:", observed_diff, "\n")
-# Observed Mean Difference: 73.52454 
-cat("Permutation-based p-value:", p_value, "\n")
-# Permutation-based p-value: 0.0856 
-cat("95% Confidence Interval:", ci_lower, "to", ci_upper, "\n")
-# 95% Confidence Interval: -84.00897 to 81.68221 
-cat("Hedges' g:", hedges_g$estimate, "(Corrected for small sample bias)\n")
-# Hedges' g: 0.2401366 (Corrected for small sample bias)
-cat("Cliff's Delta:", cliffs_delta$estimate, "(Effect Size Category:", cliffs_delta$magnitude, ")\n")
-# Cliff's Delta: 0.0860274 (Effect Size Category: 1 )
+#Calculate effect size
+HpElev_effsize <- wilcox_effsize(df, analysis_elev ~ Haem_01, alternative = "two.sided")
+print(HpElev_effsize)
+# # A tibble: 1 × 7
+#   .y.           group1 group2 effsize    n1    n2 magnitude
+# * <chr>         <chr>  <chr>    <dbl> <int> <int> <ord>    
+# 1 analysis_elev 0      1       0.0678    73   175 small    
+HpElev_effsize.s <- HpElev_effsize$effsize
+# stats
+HpElev_wilcox.prev.p
+# [1] 0.2860463
+HpElev_effsize.s
+# Effect size (r) 
+#      0.06780579 
 ```
 
-## Bell's Vireo: Not significant MW-U (p-value = 0.148, r = 0.332)
-
--   No significant difference in mean elevation between Hp infected and uninfected samples
--   However, there is a visual pattern as elevation decreases, probability of Hp infection increases
+BEVI:
 
 ```{r}
 #Prep data:
-Bells_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Bell's Vireo")
+Bells_p_hp <- subset(df, df$common_name == "Bell's vireo")
 Bells_Hp_pos <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "1")
 Bells_Hp_neg <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "0")
 
@@ -1055,9 +911,9 @@ shapiro.test(Bells_Hp_neg$analysis_elev)
 # 
 # data:  Bells_Hp_neg$analysis_elev
 # W = 0.64036, p-value = 0.0002845
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# FAILED - NOT NORMAL; USE MW-U
 
-qqPlot(Bells_p_hp$analysis_elev) #in range, but more discrete (not enough variation)
+qqPlot(Bells_p_hp$analysis_elev) #in range, but not a lot of variation
 
 # Wilcoxon Rank-Sum Test if data are not normal
 BellsElev_wilcox.prev <- wilcox.test(analysis_elev ~ Haem_01, data = Bells_p_hp, exact = FALSE)
@@ -1079,16 +935,22 @@ print(BellsElev_effsize)
 # * <chr>         <chr>  <chr>    <dbl> <int> <int> <ord>    
 # 1 analysis_elev 0      1        0.332     9    11 moderate 
 BellsElev_effsize.s <- BellsElev_effsize$effsize
+
+BellsElev_wilcox.prev.p
+# [1] 0.148268
+BellsElev_effsize.s
+# Effect size (r) 
+#         0.33177 
+wilcoxonZ(Bells_Hp_pos$analysis_elev, Bells_Hp_neg$analysis_elev)
+#     z 
+# -1.48 
 ```
 
-## Gray Vireo: Significant MW-U (p-value = 0.038, r = 0.159)
-
--   Significant difference in mean elevation between Hp infected and uninfected samples
--   As elevation decreases, probability of Hp infection increases
+GRVI:
 
 ```{r}
 #Prep data:
-Gray_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Gray Vireo")
+Gray_p_hp <- subset(df, df$common_name == "gray vireo")
 Gray_Hp_pos <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "1")
 Gray_Hp_neg <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "0") 
 
@@ -1097,14 +959,14 @@ shapiro.test(Gray_Hp_pos$analysis_elev)
 # 
 # data:  Gray_Hp_pos$analysis_elev
 # W = 0.77931, p-value = 7.388e-12
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Gray_Hp_neg$analysis_elev)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Gray_Hp_neg$analysis_elev
 # W = 0.8903, p-value = 0.0001164
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# FAILED - NOT NORMAL; USE MW-U
 
 qqPlot(Gray_p_hp$analysis_elev) #not normally distributed, fat left tail
 
@@ -1128,7 +990,14 @@ print(GrayElev_effsize)
 # * <chr>         <chr>  <chr>    <dbl> <int> <int> <ord>    
 # 1 analysis_elev 0      1        0.159    55   115 small  
 GrayElev_effsize.s <- GrayElev_effsize$effsize
-
+GrayElev_wilcox.prev.p
+# [1] 0.03814272
+GrayElev_effsize.s
+# Effect size (r) 
+#       0.1591441
+wilcoxonZ(Gray_Hp_pos$analysis_elev, Gray_Hp_neg$analysis_elev)
+#     z 
+# -2.07 
 #----------------
 #If we ran without 11 Utah samples:
 Gray_p_hp1 <- filter(Gray_p_hp, Gray_p_hp$state != "Utah")
@@ -1140,14 +1009,14 @@ shapiro.test(Gray_Hp_pos1$analysis_elev)
 # 
 # data:  Gray_Hp_pos1$analysis_elev
 # W = 0.95648, p-value = 0.001772
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Gray_Hp_neg1$analysis_elev)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Gray_Hp_neg1$analysis_elev
 # W = 0.8903, p-value = 0.0001164
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# FAILED - NOT NORMAL; USE MW-U
 
 GrayElev_wilcox.prev1 <- wilcox.test(analysis_elev ~ Haem_01, data = Gray_p_hp1, exact = FALSE)
 GrayElev_wilcox.prev1
@@ -1167,16 +1036,11 @@ print(GrayElev_effsize.prev1)
 # 1 analysis_elev 0      1       0.0919    55   104 small  
 ```
 
-## Plumbeous Vireo w/ Embudo outlier: Not Significant MW-U (p-value = 0.772, r = 0.04)
-
-## Plumbeous Vireo w/o Embudo outlier: Not Significant MW-U (p-value = 0.383, r = 0.117)
-
--   No difference in mean elevation between Hp infected and uninfected samples.
--   Significant difference in mean elevation between Hp infected and uninfected when removing Embudo outlier only seen when running t-test, but data is not normal in its distribution, so this analysis cannot be done in this way and MW-U are more accureate measure of signifance (or lack-thereof).
+PLVI:
 
 ```{r}
 #Prep data:
-Plum_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Plumbeous Vireo")
+Plum_p_hp <- subset(df, df$common_name == "plumbeous vireo")
 Plum_Hp_pos <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "1") 
 Plum_Hp_neg <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "0") 
 #Without Embudo outlier
@@ -1189,14 +1053,14 @@ shapiro.test(Plum_Hp_pos$analysis_elev)
 # 
 # data:  Plum_Hp_pos$analysis_elev
 # W = 0.88457, p-value = 0.0001787
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Plum_Hp_neg$analysis_elev)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_neg$analysis_elev
 # W = 0.64073, p-value = 0.0002875
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# FAILED - NOT NORMAL; USE MW-U
 
 qqPlot(Plum_p_hp$analysis_elev) #close to normal distribution, could use Welch's t-test instead
 
@@ -1220,61 +1084,26 @@ print(PlumElev_effsize)
 # 1 analysis_elev 0      1       0.0395     9    49 small 
 PlumElev_effsize.s <- PlumElev_effsize$effsize
 
-#------------------------------
-#WITHOUT EMBUDO OUTLIER:
-shapiro.test(Plum_Hp_pos1$analysis_elev)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_Hp_pos$analysis_elev
-# W = 0.88457, p-value = 0.0001787
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-shapiro.test(Plum_Hp_neg1$analysis_elev)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_Hp_neg1$analysis_elev
-# W = 0.96214, p-value = 0.8303
-# PASSED- NORMAL; USE T-TEST
-
-shapiro.test(Plum_p_hp1$analysis_elev)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_p_hp1$analysis_elev
-# W = 0.8737, p-value = 2.539e-05
-
-qqPlot(Plum_p_hp1$analysis_elev) #close to normal distribution, could use Welch's t-test instead
-
-PlumElev_wilcox.prev1 <- wilcox.test(analysis_elev ~ Haem_01, data = Plum_p_hp1, exact = FALSE)
-PlumElev_wilcox.prev1
-# 	Wilcoxon rank sum test with continuity correction
-# 
-# data:  analysis_elev by Haem_01
-# W = 157.5, p-value = 0.3826
-# alternative hypothesis: true location shift is not equal to 0
-
-#save p-value for plots
-PlumElev_wilcox.prev1.p <-PlumElev_wilcox.prev1$p.value
-
-#Calculate effect size
-PlumElev_effsize1 <- wilcox_effsize(Plum_p_hp1, analysis_elev ~ Haem_01, alternative = "two.sided")
-print(PlumElev_effsize1)
-# # A tibble: 1 × 7
-#   .y.           group1 group2 effsize    n1    n2 magnitude
-# * <chr>         <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 analysis_elev 0      1        0.117     8    49 small
-PlumElev_effsize1.s <- PlumElev_effsize1$effsize
+PlumElev_wilcox.prev.p
+# [1] 0.7718394
+PlumElev_effsize.s
+# Effect size (r) 
+#      0.03948506
+wilcoxonZ(Plum_Hp_pos$analysis_elev, Plum_Hp_neg$analysis_elev)
+#      z 
+# -0.301 
 ```
 
-## Visualization
+# Visualization
 
-Figure 1B: Elevation vs.Hp infection status by host species
+Figure 1C: Elevation vs.Hp infection status by host species
 
 ```{r}
 Hp_c <- c("#C5D8CF","#4F6D5A") 
-str(df_p_hp)
+str(df)
 # Box Plot: BEVI infected/uninfected 
 Hp_elev_prev_box <- ggplot(
-  df_p_hp, aes(x = Haem_01, y = analysis_elev, color = Haem_01, fill = Haem_01)) + 
+  df, aes(x = Haem_01, y = analysis_elev, color = Haem_01, fill = Haem_01)) + 
   geom_boxplot(
     width = .15, fill = Hp_c,
     size = 0.8, outlier.shape = NA) +
@@ -1440,62 +1269,73 @@ library(patchwork)
 Fig1_Boxplots_InfectedUninfected_elev <- (Bell_Elev_box + Gray_Elev_box + Plum_Elev_box +
                                             plot_layout(guides = "collect", nrow=1))
 plot(Fig1_Boxplots_InfectedUninfected_elev)
- ggsave(Fig1_Boxplots_InfectedUninfected_elev, filename="Fig1_BoxPlots_InfectedUninfected_Elev.pdf", bg="transparent", height=4.5, width=6, units="in")
+ ggsave(Fig1_Boxplots_InfectedUninfected_elev, filename="Fig1C.pdf", bg="transparent", height=4.5, width=6, units="in")
 ```
 
-## -----------------------------------------------
+# -----------------------------------------------
 
-# TPC1 v Status
+# tempPC1 v Status
 
-## All vireos: Significant MW-U (p-value = 0.005, r = 0.177)
+## All vireos: Significant; MW-U (p-value = 0.003, r = 0.191)
+
+## BEVI: Significant; MW-U (p-value = 0.027, r = 0.502)
+
+## GRVI: NOT significant; MW-U (p-value = 0.196, r = 0.099)
+
+## PLVI: NOT significant; MW-U (p-value = 0.396, r = 0.113)
 
 ```{r}
 #Data prep:
-df_p_pos <- filter(df_p_hp, df_p_hp$Haem_01 =="1") #248
-df_p_neg <- filter(df_p_hp, df_p_hp$Haem_01 =="0") #73
+df_p_pos <- filter(df, df$Haem_01 =="1") #248
+df_p_neg <- filter(df, df$Haem_01 =="0") #73
 
-shapiro.test(df_p_pos$tempPC1)
+shapiro.test(df$tempPC1)
 # 	Shapiro-Wilk normality test
 # 
-# data:  df_p_pos$tempPC1
-# W = 0.72375, p-value < 2.2e-16
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# data:  df$tempPC1
+# W = 0.85338, p-value = 1.337e-14
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(df_p_neg$tempPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  df_p_neg$tempPC1
-# W = 0.66688, p-value = 1.381e-11
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.77358, p-value = 2.994e-09
+# FAILED - NOT NORMAL; USE MW-U
 
-qqPlot(df_p_hp$tempPC1)
+qqPlot(df$tempPC1)
 #Discrete TPC1s, not normally distributed.
 
 # Wilcoxon Rank-Sum Test if data are not normal
-HpTPC1_wilcox.prev <- wilcox.test(tempPC1 ~ Haem_01, data = df_p_hp, exact = FALSE)
+HpTPC1_wilcox.prev <- wilcox.test(tempPC1 ~ Haem_01, data = df, exact = FALSE)
 HpTPC1_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  tempPC1 by Haem_01
-# W = 5227, p-value = 0.005208
+# W = 4837.5, p-value = 0.002592
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
 HpTPC1_wilcox.prev.p <-HpTPC1_wilcox.prev$p.value
 #Calculate effect size
-HpTPC1_effsize <- wilcox_effsize(df_p_hp, tempPC1 ~ Haem_01, alternative = "two.sided")
+HpTPC1_effsize <- wilcox_effsize(df, tempPC1 ~ Haem_01, alternative = "two.sided")
 print(HpTPC1_effsize)
 # A tibble: 1 × 7
 #   .y.     group1 group2 effsize    n1    n2 magnitude
 # * <chr>   <chr>  <chr>    <dbl> <int> <int> <ord>    
 # 1 tempPC1 0      1        0.177    73   175 small  
 HpTPC1_effsize.s <- HpTPC1_effsize$effsize
+HpTPC1_wilcox.prev.p
+# [1] 0.002591938
+HpTPC1_effsize.s
+# Effect size (r) 
+#       0.1913491
 ```
 
-## Bell's Vireo: Not significant MW-U (p-value = 0.107, r = 0.370)
+BEVI:
 
 ```{r}
-Bells_p_hp   <- subset(df_p_hp, df_p_hp$common_name == "Bell's Vireo")
+Bells_p_hp   <- subset(df, df$common_name == "Bell's vireo")
 Bells_Hp_pos <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "1")
 Bells_Hp_neg <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "0")
 
@@ -1503,15 +1343,15 @@ shapiro.test(Bells_Hp_pos$tempPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Bells_Hp_pos$tempPC1
-# W = 0.68863, p-value = 0.0003343
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.84005, p-value = 0.03163
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Bells_Hp_neg$tempPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Bells_Hp_neg$tempPC1
-# W = 0.69305, p-value = 0.001177
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.90189, p-value = 0.2632
+# FAILED - NOT NORMAL; USE MW-U
 
 qqPlot(Bells_p_hp$tempPC1) #Very discrete levels, not normal distribution 
 
@@ -1521,7 +1361,7 @@ BellsTPC1_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  tempPC1 by Haem_01
-# W = 69.5, p-value = 0.1068
+# W = 79, p-value = 0.02723
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
@@ -1530,48 +1370,93 @@ BellsTPC1_wilcox.prev.p
 #Calculate effect size
 BellsTPC1_effsize <- wilcox_effsize(Bells_p_hp, tempPC1 ~ Haem_01, alternative = "two.sided")
 print(BellsTPC1_effsize)
+#   .y.     group1 group2 effsize    n1    n2 magnitude
+# * <chr>   <chr>  <chr>    <dbl> <int> <int> <ord>    
+# 1 tempPC1 0      1        0.502     9    11 large  
+BellsTPC1_effsize.s <- BellsTPC1_effsize$effsize
+BellsTPC1_wilcox.prev.p
+# [1] 0.02722863
+BellsTPC1_effsize.s
+# Effect size (r) 
+#       0.5022873 
+wilcoxonZ(Bells_Hp_pos$tempPC1, Bells_Hp_neg$tempPC1)
+#     z 
+# -2.25
+```
+
+GRVI:
+
+```{r}
+Gray_p_hp   <- subset(df, df$common_name == "gray vireo")
+Gray_Hp_pos <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "1")
+Gray_Hp_neg <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "0")
+
+shapiro.test(Gray_Hp_pos$tempPC1)
+# 	Shapiro-Wilk normality test
+# 
+# data:  Gray_Hp_pos$tempPC1
+# W = 0.93862, p-value = 5.022e-05
+# FAILED - NOT NORMAL; USE MW-U
+
+shapiro.test(Gray_Hp_neg$tempPC1)
+# 	Shapiro-Wilk normality test
+# 
+# data:  Gray_Hp_neg$tempPC1
+# W = 0.92216, p-value = 0.001617
+# FAILED - NOT NORMAL; USE MW-U
+
+qqPlot(Gray_p_hp$tempPC1) #Very discrete levels, not normal distribution 
+
+# Wilcoxon Rank-Sum Test if data are not normal
+GrayTPC1_wilcox.prev <- wilcox.test(tempPC1 ~ Haem_01, data = Gray_p_hp, exact = FALSE)
+GrayTPC1_wilcox.prev
+# 	Wilcoxon rank sum test with continuity correction
+# 
+# data:  tempPC1 by Haem_01
+# W = 2775, p-value = 0.1961
+# alternative hypothesis: true location shift is not equal to 0
+
+#save p-value for plots
+GrayTPC1_wilcox.prev.p <-GrayTPC1_wilcox.prev$p.value
+#Calculate effect size
+GrayTPC1_effsize <- wilcox_effsize(Gray_p_hp, tempPC1 ~ Haem_01, alternative = "two.sided")
+print(GrayTPC1_effsize)
 # # A tibble: 1 × 7
 #   .y.     group1 group2 effsize    n1    n2 magnitude
 # * <chr>   <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 tempPC1 1      0        0.370    11     9 moderate 
-BellsTPC1_effsize.s <- BellsTPC1_effsize$effsize
+# 1 tempPC1 0      1       0.0993    55   115 small   
+GrayTPC1_effsize.s <- GrayTPC1_effsize$effsize
+GrayTPC1_wilcox.prev.p
+# [1] 0.196072
+GrayTPC1_effsize.s
+# Effect size (r) 
+#      0.09928316 
+wilcoxonZ(Gray_Hp_pos$tempPC1, Gray_Hp_neg$tempPC1)
+#    z 
+# 1.29
 ```
 
-## Gray Vireo: No variation - cannot determine
+PLVI:
 
 ```{r}
 #Prep data:
-#NO VARIATION IN TEMPERATURE PC1 (all the same value)
-```
-
-## Plumbeous Vireo w/ Embudo outlier: Not significant MW-U (p-value = 0.157, r = 0.188)
-
-## Plumbeous Vireo w/o Embudo outlier: Not significant MW-U (p-value = 0.288, r = 0.143)
-
-```{r}
-#Prep data:
-Plum_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Plumbeous Vireo")
+Plum_p_hp <- subset(df, df$common_name == "plumbeous vireo")
 Plum_Hp_pos <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "1") 
 Plum_Hp_neg <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "0") 
-
-#Without Embudo outlier
-Plum_p_hp1 <- dplyr::filter(Plum_p_hp, Plum_p_hp$analysis_elev > 2000)
-Plum_Hp_pos1 <- filter(Plum_p_hp1, Plum_p_hp1$Haem_01 == "1") 
-Plum_Hp_neg1 <- filter(Plum_p_hp1, Plum_p_hp1$Haem_01 == "0") 
 
 shapiro.test(Plum_Hp_pos$tempPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_pos$tempPC1
-# W = 0.58883, p-value = 1.742e-10
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.66972, p-value = 3.145e-09
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Plum_Hp_neg$tempPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_neg$tempPC1
-# W = 0.65474, p-value = 0.0004194
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.87875, p-value = 0.1523
+# PASSED - NORMAL; COULD USE T-TEST
 
 qqPlot(Plum_p_hp$tempPC1) #Very discrete levels, not normal distribution
 
@@ -1581,7 +1466,7 @@ PlumTPC1_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  tempPC1 by Haem_01
-# W = 166, p-value = 0.1569
+# W = 180.5, p-value = 0.3961
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
@@ -1590,378 +1475,327 @@ PlumTPC1_wilcox.prev.p <-PlumTPC1_wilcox.prev$p.value
 #Calculate effect size
 PlumTPC1_effsize <- wilcox_effsize(Plum_p_hp, tempPC1 ~ Haem_01, alternative = "two.sided")
 print(PlumTPC1_effsize)
-# A tibble: 1 × 7
+# # A tibble: 1 × 7
 #   .y.     group1 group2 effsize    n1    n2 magnitude
 # * <chr>   <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 tempPC1 1      0        0.188    49     9 small  
+# 1 tempPC1 0      1        0.113     9    49 small 
 PlumTPC1_effsize.s <- PlumTPC1_effsize$effsize
-
-#-------------------------------
-##WITHOUT EMBUDO OUTLIER:
-
-shapiro.test(Plum_Hp_pos1$tempPC1)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_Hp_pos1$tempPC1
-# W = 0.58883, p-value = 1.742e-10
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-shapiro.test(Plum_Hp_neg1$tempPC1)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_Hp_neg1$tempPC1
-# W = 0.66466, p-value = 0.0008917
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-shapiro.test(Plum_p_hp1$tempPC1)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_p_hp1$tempPC1
-# W = 0.61343, p-value = 5.373e-11
-
-qqPlot(Plum_p_hp1$tempPC1) #discrete levels, not normally distributed
-
-PlumTPC1_wilcox.prev1 <- wilcox.test(tempPC1 ~ Haem_01, data = Plum_p_hp1, exact = FALSE)
-PlumTPC1_wilcox.prev1
-# 	Wilcoxon rank sum test with continuity correction
-# 
-# data:  tempPC1 by Haem_01
-# W = 158, p-value = 0.2881
-# alternative hypothesis: true location shift is not equal to 0
-
-#save p-value for plots
-PlumTPC1_wilcox.prev1.p <-PlumTPC1_wilcox.prev1$p.value
-
-#Calculate effect size
-PlumTPC1_effsize1 <- wilcox_effsize(Plum_p_hp1, tempPC1 ~ Haem_01, alternative = "two.sided")
-print(PlumTPC1_effsize1)
-# A tibble: 1 × 7
-#   .y.     group1 group2 effsize    n1    n2 magnitude
-# * <chr>   <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 tempPC1 0      1        0.143     8    49 small   
-PlumTPC1_effsize1.s <- PlumTPC1_effsize1$effsize
+PlumTPC1_wilcox.prev.p
+# [1] 0.3960605
+PlumTPC1_effsize.s
+# Effect size (r) 
+#       0.1128475 
+wilcoxonZ(Plum_Hp_pos$tempPC1, Plum_Hp_neg$tempPC1)
+#     z 
+# 0.859 
 ```
 
-## Visualization
+# Visualization
+
+Color-palette
 
 ```{r}
-# Box Plot: ALL infected/uninfected 
-#Prep work:
-Hp_c <- c("#C5D8CF","#4F6D5A") #creates color palette for plot
-#df_p_hp$Haem_01 <- forcats::fct_relevel(df_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
-
-#Plot:
-# Create a proportion bar chart
-Hp_TPC1_bar <- ggplot(df_p_hp, 
-                     aes(x = as.factor(tempPC1), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Hp_c) + # Apply custom colors
-  labs(x = "TPC1",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected vireos by TPC1") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") +
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "p = ", signif(HpTPC1_wilcox.prev.p, 2), 
-                  " r =", signif(HpTPC1_effsize.s, 2)), 
-                hjust = 1.1, vjust = 1.1, size = 4.5, color = "black", fontface = "italic")  # Add p-value annotation
-plot(Hp_TPC1_bar)
-#ggsave(Hp_TPC1_bar, filename="FigS1_AllSpp_Barplots_TPC1_20241223.pdf", bg="transparent", height=4.5, width=6, units="in")
-#------------------------------------------------
-#BEVI
-#Prep work:
-Bell_c <- c("#F9F0CA","#F3DA44") #creates color palette for plot
-#library(forcats)
-#Bells_p_hp$Haem_01 <- forcats::fct_relevel(Bells_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
-
-#Plot:
-# Create a proportion bar chart
-Bells_TPC1_bar <- ggplot(Bells_p_hp, 
-                     aes(x = as.factor(tempPC1), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Bell_c) + # Apply custom colors
-  labs(y = "Proportion") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  #theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Bell's p = ", signif(BellsTPC1_wilcox.prev.p, 2), 
-                  " r =", signif(BellsTPC1_effsize.s, 2)), 
-                hjust = 1.1, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") #+ # Add p-value & effect size annotation
-#   easy_remove_axes(
-#   which = "y",
-#   teach = FALSE
-# )
-Bells_TPC1_bar
-
-#----------------------------------------------------------
-#GRVI
-#Prep work:
-Gray_c <-c("#D8D8D6","#A0A0A0") #creates color palette for plot
-#Gray_p_hp$Haem_01 <- forcats::fct_relevel(Gray_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
-Gray_p_hp$tempPC1 <- as.integer(as.character(Gray_p_hp$tempPC1)) #change tempPC1 back into continuous variable instead of factor which was used in the chi-squared comparison above.
-
-#Plot: 
-# Create a proportion bar chart
-Gray_TPC1_bar <- ggplot(Gray_p_hp, 
-                     aes(x = as.factor(tempPC1), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Gray_c) + # Apply custom colors
-  #labs(x = "TPC1 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Gray vireos by TPC1") +
-  theme_minimal() +
-  #theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-  #      plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  #annotate("text", x = Inf, y = Inf, 
-                # label = paste0(
-                #   "Gray p = ", signif(GrayTPC1_pearson.p, 2), 
-                #   " w =", signif(GrayTPC1_effectsize.s, 2)), 
-                # hjust = 1.4, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") + # Add p-value & effect size annotation
-easy_remove_axes(
-  which = "y",
-  teach = FALSE
-)
-Gray_TPC1_bar
-
-#----------------------------------------------------------
-#PLVI
-#Prep work:
-Plum_c <-c("#D7EDF9", "#89B8EB")#creates color palette for plot
-#Plum_p_hp1$Haem_01 <- forcats::fct_relevel(Plum_p_hp1$Haem_01, "1","0")  #flips x-axis factor levels so infected points are plotted first
-
-#Plot:
-# Create a proportion bar chart (without Embudo outlier point)
-Plum_TPC1_bar <- ggplot(Plum_p_hp1, 
-                     aes(x = as.factor(tempPC1), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Plum_c) + # Apply custom colors
-  #labs(x = "TPC1 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Plumbeous vireos by TPC1") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Plumbeous p = ", signif(PlumTPC1_wilcox.prev1.p, 2), 
-                  " r =", signif(PlumTPC1_effsize1.s, 2)), 
-                hjust = 1.05, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") +
-  easy_remove_axes(
-  which = "y",
-  teach = FALSE
-)# Add p-value annotation
-Plum_TPC1_bar
-
-# PLOT ALL PANELS TOGETHER 
-library(patchwork)
-# Alternative layout option = BETTER, USE THIS ONE:
-combined_plot <- ((Hp_TPC1_bar) / 
-                   (Bells_TPC1_bar + 
-                   Gray_TPC1_bar + 
-                   Plum_TPC1_bar)) + 
-  plot_annotation(theme = theme_minimal())
-combined_plot <- combined_plot + theme(aspect.ratio = 1) 
-plot(combined_plot)
- ggsave(combined_plot, filename="FigS3.pdf", bg="transparent", height=10, width=10, units="in") 
+#Visualize dataset
+#Set colors for pathogen comparisons
+Hp_c <- c("#C5D8CF", "#4F6D5A")
+BEVI_c <- c("#F9F0CA","#F3DA44")
+GRVI_c <-c("#D8D8D6","#A0A0A0")
+PLVI_c <-c("#D7EDF9","#89B8EB")
 ```
 
-## -----------------------------------------------
+Species-specific box plots
 
-# TPC2 v Status
+```{r}
+custom_fill_colors <- c(
+  "Bell's vireo.0" = BEVI_c[1],
+  "Bell's vireo.1" = BEVI_c[2],
+  "gray vireo.0"   = GRVI_c[1],
+  "gray vireo.1"   = GRVI_c[2],
+  "plumbeous vireo.0" = PLVI_c[1],
+  "plumbeous vireo.1" = PLVI_c[2]
+)
 
-## All vireos: Not significant MW-U (p-value = 0.448, r = 0.048)
+df$Haem_01 <- factor(df$Haem_01, levels = c("1", "0"))  # Add this
+species_tpc1_prev_facet <- ggplot(
+  df, aes(x = Haem_01, y = tempPC1, fill = interaction(common_name, Haem_01))) +
+  geom_boxplot(
+    width = 0.8,  # wider boxes
+    size = 0.8,
+    outlier.shape = NA,
+    position = position_dodge(width = 3)) +
+  geom_jitter(
+    width = 0.1,
+    height = 0,
+    size = 3,
+    alpha = 0.6,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+    ) +
+  scale_fill_manual(values = custom_fill_colors, guide = "none") +
+  scale_x_discrete(
+    labels = c("pos", "neg")) +
+  scale_y_continuous(limits = c(-6, 8)) +
+  facet_wrap(~common_name, ncol = 3) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    panel.grid.major.y = element_line(color = "darkgray", size = 0.3, linetype = "dashed"),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.title.x = element_blank(),
+    strip.text = element_text(size = 13),
+    strip.background = element_blank(),     # Removes gray strip box
+    panel.spacing.x = unit(1, "lines"),     # Adjust inter-facet spacing
+    panel.border = element_blank(),         # Removes facet boxes
+    legend.position = "none") +
+  labs(y = "tempPC1")
+species_tpc1_prev_facet
+```
+
+Overall box plots:
+
+```{r}
+df$Haem_01 <- factor(df$Haem_01, levels = c("1", "0"))
+
+overall_tpc1_prev_plot <- ggplot(
+  df, aes(x = Haem_01, y = tempPC1, fill = Haem_01)) +
+  geom_boxplot(
+    width = 0.8,
+    size = 0.8,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    width = 0.1,
+    height = 0,
+    size = 3,
+    alpha = 0.6,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+  ) +
+  scale_fill_manual(values = c("0" = "#C5D8CF", "1" = "#4F6D5A"), guide = "none") +  # overall palette
+  scale_x_discrete(
+    labels = c("pos", "neg")
+  ) +
+  scale_y_continuous(limits = c(-6,8)) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    panel.grid.major.y = element_line(color = "darkgray", size = 0.3, linetype = "dashed"),
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),         # remove x-axis labels here
+    axis.ticks.x = element_blank(),        # and tick marks
+    panel.border = element_blank(),
+    legend.position = "none") +
+  labs(title = "Infection status across tempPC1")
+overall_tpc1_prev_plot
+```
+
+Figure S3 - tempPC1 v. infection status
+
+```{r}
+# PLOT ALL PANELS TOGETHER 
+library(patchwork)
+final_combined_plot <- overall_tpc1_prev_plot / species_tpc1_prev_facet +
+  plot_layout(heights = c(1, 1))
+final_combined_plot
+
+ggsave(final_combined_plot, filename="FigS3_box.pdf", bg="transparent", height=10, width=10, units="in")
+```
+
+# -----------------------------------------------
+
+# tempPC2 v Status
+
+## All vireos: NOT Significant; MW-U (p-value = 0.346, r = 0.060)
+
+## BEVI: NOT Significant; MW-U (p-value = 0.110, r = 0.366)
+
+## GRVI: NOT significant; MW-U (p-value = 0.210, r = 0.096)
+
+## PLVI: NOT significant; MW-U (p-value = 0.307, r = 0.135)
 
 ```{r}
 #Data prep:
-df_p_pos <- filter(df_p_hp, df_p_hp$Haem_01 =="1") #248
-df_p_neg <- filter(df_p_hp, df_p_hp$Haem_01 =="0") #73
+df_p_pos <- filter(df, df$Haem_01 =="1") #248
+df_p_neg <- filter(df, df$Haem_01 =="0") #73
 
-shapiro.test(df_p_pos$tempPC2)
+shapiro.test(df$tempPC2)
 # 	Shapiro-Wilk normality test
 # 
-# data:  df_p_pos$tempPC2
-# W = 0.66857, p-value < 2.2e-16
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# data:  df$tempPC2
+# W = 0.6332, p-value < 2.2e-16
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(df_p_neg$tempPC2)
 # 	Shapiro-Wilk normality test
 # 
 # data:  df_p_neg$tempPC2
-# W = 0.32814, p-value < 2.2e-16
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.77288, p-value = 2.875e-09
+# FAILED - NOT NORMAL; USE MW-U
 
-qqPlot(df_p_hp$tempPC2)
-#Discrete TPC2s, not normally distributed.
+qqPlot(df$tempPC2)
+# Not normally distributed.
 
 # Wilcoxon Rank-Sum Test if data are not normal
-HpTPC2_wilcox.prev <- wilcox.test(tempPC2 ~ Haem_01, data = df_p_hp, exact = FALSE)
+HpTPC2_wilcox.prev <- wilcox.test(tempPC2 ~ Haem_01, data = df, exact = FALSE)
 HpTPC2_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  tempPC2 by Haem_01
-# W = 6107.5, p-value = 0.448
+# W = 5902.5, p-value = 0.3462
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
 HpTPC2_wilcox.prev.p <-HpTPC2_wilcox.prev$p.value
 #Calculate effect size
-HpTPC2_effsize <- wilcox_effsize(df_p_hp, tempPC2 ~ Haem_01, alternative = "two.sided")
+HpTPC2_effsize <- wilcox_effsize(df, tempPC2 ~ Haem_01, alternative = "two.sided")
 print(HpTPC2_effsize)
 # # A tibble: 1 × 7
 #   .y.     group1 group2 effsize    n1    n2 magnitude
 # * <chr>   <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 tempPC2 0      1       0.0483    73   175 small 
+# 1 tempPC2 0      1       0.0599    73   175 small
 HpTPC2_effsize.s <- HpTPC2_effsize$effsize
+HpTPC2_wilcox.prev.p
+# [1] 0.3462332
+HpTPC2_effsize.s
+# Effect size (r) 
+#      0.05987375
 ```
 
-## Bell's vireo: Not significant χ2 (p-value = 0.239, w = 0.373)
+BEVI:
 
 ```{r}
-#Prep data:
-Bells_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Bell's Vireo")
+Bells_p_hp   <- subset(df, df$common_name == "Bell's vireo")
 Bells_Hp_pos <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "1")
 Bells_Hp_neg <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "0")
 
-plotNormalHistogram(Bells_p_hp$tempPC2) #NOT NORMAL
-qqPlot(Bells_p_hp$tempPC2) #Only two points to compare - need to do #NOT ENOUGH VARIATION IN LATITUDE TO COMPARE THIS WAY. CONSIDER CHI-SQUARED WITH 38 AND 34 INFECTED VS. UNINFECTED 
-Bells_p_hp$tempPC2 <- as.factor(Bells_p_hp$tempPC2)
-
-Bells.HpTPC2.chi <- chisq.test(table(Bells_p_hp$tempPC2, Bells_p_hp$Haem_01))
-Bells.HpTPC2.chi
-# 	Pearson's Chi-squared test with Yates' continuity correction
+shapiro.test(Bells_Hp_pos$tempPC2)
+# 	Shapiro-Wilk normality test
 # 
-# data:  table(Bells_p_hp$tempPC2, Bells_p_hp$Haem_01)
-# X-squared = 1.3853, df = 1, p-value = 0.2392
-#NO SIGNIFICANT DIFFERENCE IN TPC2 vs INFECTED AND UNINFECTED BELL'S VIREO
-BellsTPC2_pearson.p <- Bells.HpTPC2.chi$p.value
+# data:  Bells_Hp_pos$tempPC2
+# W = 0.86828, p-value = 0.07367
+# FAILED - NOT NORMAL; USE MW-U
 
-#Phi is used when the contingency table is 2x2 (uninfected vs infected, 32 vs 38); where n = the number of observations. A value of .1 is considered a small effect, .3 a medium effect, and .5 a large effect.More info: https://real-statistics.com/chi-square-and-f-distributions/effect-size-chi-square/
+shapiro.test(Bells_Hp_neg$tempPC2)
+# 	Shapiro-Wilk normality test
+# 
+# data:  Bells_Hp_neg$tempPC2
+# W = 0.69867, p-value = 0.001369
+# FAILED - NOT NORMAL; USE MW-U
 
-BellsTPC2_table <- table(Bells_p_hp$tempPC2, Bells_p_hp$Haem_01)
-BellsTPC2_effectsize.s <- phi(BellsTPC2_table)
-BellsTPC2_effectsize.s
-#   phi 
-# 0.373 
+qqPlot(Bells_p_hp$tempPC2) #Very discrete levels, not normal distribution 
+
+# Wilcoxon Rank-Sum Test if data are not normal
+BellsTPC2_wilcox.prev <- wilcox.test(tempPC2 ~ Haem_01, data = Bells_p_hp, exact = FALSE)
+BellsTPC2_wilcox.prev
+# 	Wilcoxon rank sum test with continuity correction
+# 
+# data:  tempPC2 by Haem_01
+# W = 71, p-value = 0.1098
+# alternative hypothesis: true location shift is not equal to 0
+
+#save p-value for plots
+BellsTPC2_wilcox.prev.p <-BellsTPC2_wilcox.prev$p.value
+
+#Calculate effect size
+BellsTPC2_effsize <- wilcox_effsize(Bells_p_hp, tempPC2 ~ Haem_01, alternative = "two.sided")
+print(BellsTPC2_effsize)
+# # A tibble: 1 × 7
+#   .y.     group1 group2 effsize    n1    n2 magnitude
+# * <chr>   <chr>  <chr>    <dbl> <int> <int> <ord>    
+# 1 tempPC2 0      1        0.366     9    11 moderate  
+BellsTPC2_effsize.s <- BellsTPC2_effsize$effsize
+BellsTPC2_wilcox.prev.p
+# [1] 0.1098075
+BellsTPC2_effsize.s
+# Effect size (r) 
+#       0.3660738 
+wilcoxonZ(Bells_Hp_pos$tempPC2, Bells_Hp_neg$tempPC2)
+#     z 
+# -1.64
 ```
 
-```{r fig.width = 5, fig.height= 5}
-#Hp-----------------------------------------------
-#Pearson's residuals of Chi-squared test
-library(corrplot)
-
-BellsHp.TPC2.corr <- "Pearson's Residual Score"
-corrplot(Bells.HpTPC2.chi$residuals, 
-         title = BellsHp.TPC2.corr, 
-         is.cor = FALSE)
-```
-
-## Gray Vireo: Significant χ2 (p-value = 0.042, w = 0.182)
-
--   Slightly significant difference in mean TPC2 between Hp infected and uninfected samples.
--   More infected at higher TPC2 than expected.
+GRVI:
 
 ```{r}
-#Prep data:
-Gray_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Gray Vireo")
+Gray_p_hp   <- subset(df, df$common_name == "gray vireo")
 Gray_Hp_pos <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "1")
-Gray_Hp_neg <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "0") 
+Gray_Hp_neg <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "0")
 
-plotNormalHistogram(Gray_p_hp$tempPC2) #NOT NORMAL DISTRIBUTION
-qqPlot(Gray_p_hp$tempPC2) #Only two points to compare - need to do #NOT ENOUGH VARIATION IN LATITUDE TO COMPARE THIS WAY. CONSIDER CHI-SQUARED WITH 38 AND 34 INFECTED VS. UNINFECTED 
-Gray_p_hp$tempPC2 <- as.factor(Gray_p_hp$tempPC2)
-
-Gray.HpTPC2.chi <- chisq.test(table(Gray_p_hp$tempPC2, Gray_p_hp$Haem_01))
-Gray.HpTPC2.chi
-# 	Pearson's Chi-squared test with Yates' continuity correction
+shapiro.test(Gray_Hp_pos$tempPC2)
+# 	Shapiro-Wilk normality test
 # 
-# data:  table(Gray_p_hp$tempPC2, Gray_p_hp$Haem_01)
-# X-squared = 4.1553, df = 1, p-value = 0.0415
+# data:  Gray_Hp_pos$tempPC2
+# W = 0.46793, p-value < 2.2e-16
+# FAILED - NOT NORMAL; USE MW-U
 
-#SIGNIFICANT DIFFERENCE IN TPC2 VS INFECTED AND UNINFECTED BELL'S VIREO
-GrayTPC2_pearson.p <- Gray.HpTPC2.chi$p.value
+shapiro.test(Gray_Hp_neg$tempPC2)
+# 	Shapiro-Wilk normality test
+# 
+# data:  Gray_Hp_neg$tempPC2
+# W = 0.92085, p-value = 0.001439
+# FAILED - NOT NORMAL; USE MW-U
 
-#Phi is used when the contingency table is 2x2 (uninfected vs infected, 32 vs 38); where n = the number of observations. A value of .1 is considered a small effect, .3 a medium effect, and .5 a large effect.More info: https://real-statistics.com/chi-square-and-f-distributions/effect-size-chi-square/
-GrayTPC2_table <- table(Gray_p_hp$tempPC2, Gray_p_hp$Haem_01)
-GrayTPC2_effectsize.s <- phi(GrayTPC2_table)
-GrayTPC2_effectsize.s
-#   phi 
-# 0.182 
+qqPlot(Gray_p_hp$tempPC2) #Not normal distribution 
+
+# Wilcoxon Rank-Sum Test if data are not normal
+GrayTPC2_wilcox.prev <- wilcox.test(tempPC2 ~ Haem_01, data = Gray_p_hp, exact = FALSE)
+GrayTPC2_wilcox.prev
+# 	Wilcoxon rank sum test with continuity correction
+# 
+# data:  tempPC2 by Haem_01
+# W = 2787, p-value = 0.2103
+# alternative hypothesis: true location shift is not equal to 0
+
+#save p-value for plots
+GrayTPC2_wilcox.prev.p <-GrayTPC2_wilcox.prev$p.value
+#Calculate effect size
+GrayTPC2_effsize <- wilcox_effsize(Gray_p_hp, tempPC2 ~ Haem_01, alternative = "two.sided")
+print(GrayTPC2_effsize)
+# # A tibble: 1 × 7
+#   .y.     group1 group2 effsize    n1    n2 magnitude
+# * <chr>   <chr>  <chr>    <dbl> <int> <int> <ord>    
+# 1 tempPC2 0      1       0.0962    55   115 small   
+GrayTPC2_effsize.s <- GrayTPC2_effsize$effsize
+GrayTPC2_wilcox.prev.p
+# [1] 0.2103017
+GrayTPC2_effsize.s
+# Effect size (r) 
+#      0.09620858 
+wilcoxonZ(Gray_Hp_pos$tempPC2, Gray_Hp_neg$tempPC2)
+#    z 
+# 1.25
 ```
 
-```{r fig.width = 5, fig.height= 5}
-#Hp-----------------------------------------------
-#Pearson's residuals of Chi-squared test
-library(corrplot)
-
-GrayHp.TPC2.corr <- "Pearson's Residual Score"
-corrplot(Gray.HpTPC2.chi$residuals, 
-         title = GrayHp.TPC2.corr, 
-         is.cor = FALSE)
-```
-
-At higher TPC2, there are more infected Gray vireos than expected.
-
-## Plumbeous vireo w/ Embudo outlier: Not significant MW-U (p-value = 0.488, r = 0.093)
-
-## Plumbeous vireo w/o Embudo outlier: Not significant MW-U (p-value = 0.266, r = 0.149)
+PLVI:
 
 ```{r}
 #Prep data:
-Plum_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Plumbeous Vireo")
+Plum_p_hp <- subset(df, df$common_name == "plumbeous vireo")
 Plum_Hp_pos <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "1") 
 Plum_Hp_neg <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "0") 
-
-
-plotNormalHistogram(Plum_p_hp$tempPC2) #NOT NORMAL DISTRIBUTION
-qqPlot(Plum_p_hp$tempPC2) #Discrete levels. Not normal distribution.
 
 shapiro.test(Plum_Hp_pos$tempPC2)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_pos$tempPC2
-# W = 0.78364, p-value = 4.605e-07
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.89726, p-value = 0.0004475
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Plum_Hp_neg$tempPC2)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_neg$tempPC2
-# W = 0.88886, p-value = 0.1942
-# PASSED - NORMAL; USE T-TEST
+# W = 0.66717, p-value = 0.0005864
+# FAILED - NOT NORMAL; USE MW-U
 
-shapiro.test(Plum_p_hp$tempPC2)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_p_hp$tempPC2
-# W = 0.80281, p-value = 2.275e-07
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-qqPlot(Plum_p_hp$tempPC2) #Very discrete levels, not normal distribution 
+qqPlot(Plum_p_hp$tempPC2) #Not normal distribution
 
 # Wilcoxon Rank-Sum Test if data are not normal
 PlumTPC2_wilcox.prev <- wilcox.test(tempPC2 ~ Haem_01, data = Plum_p_hp, exact = FALSE)
@@ -1969,7 +1803,7 @@ PlumTPC2_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  tempPC2 by Haem_01
-# W = 251, p-value = 0.4883
+# W = 172.5, p-value = 0.3075
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
@@ -1981,758 +1815,658 @@ print(PlumTPC2_effsize)
 # # A tibble: 1 × 7
 #   .y.     group1 group2 effsize    n1    n2 magnitude
 # * <chr>   <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 tempPC2 1      0       0.0925    49     9 small 
+# 1 tempPC2 0      1        0.135     9    49 small
 PlumTPC2_effsize.s <- PlumTPC2_effsize$effsize
-
-#------------------------------
-##WITHOUT EMBUDO OUTLIER:
-
-shapiro.test(Plum_Hp_pos1$tempPC2)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_Hp_pos1$tempPC2
-# W = 0.78364, p-value = 4.605e-07
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-shapiro.test(Plum_Hp_neg1$tempPC2)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_Hp_neg1$tempPC2
-# W = 0.91728, p-value = 0.4082
-# PASSED - NORMAL; USE T-TEST
-shapiro.test(Plum_p_hp1$tempPC2)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_p_hp1$tempPC2
-# W = 0.80594, p-value = 3.261e-07
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-qqPlot(Plum_p_hp1$tempPC2) #discrete levels, not normally distributed
-
-PlumTPC2_wilcox.prev1 <- wilcox.test(tempPC2 ~ Haem_01, data = Plum_p_hp1, exact = FALSE)
-PlumTPC2_wilcox.prev1
-#	Wilcoxon rank sum test with continuity correction
-
-# data:  tempPC2 by Haem_01
-# W = 241.5, p-value = 0.2661
-# alternative hypothesis: true location shift is not equal to 0
-
-#save p-value for plots
-PlumTPC2_wilcox.prev1.p <-PlumTPC2_wilcox.prev1$p.value
-
-#Calculate effect size
-PlumTPC2_effsize1 <- wilcox_effsize(Plum_p_hp1, tempPC2 ~ Haem_01, alternative = "two.sided")
-print(PlumTPC2_effsize1)
-# A tibble: 1 × 7
-#   .y.     group1 group2 effsize    n1    n2 magnitude
-# * <chr>   <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 tempPC2 0      1        0.149     8    49 small  
-PlumTPC2_effsize1.s <- PlumTPC2_effsize1$effsize
+PlumTPC2_wilcox.prev.p
+# [1] 0.307462
+PlumTPC2_effsize.s
+# Effect size (r) 
+#       0.135417 
+wilcoxonZ(Plum_Hp_pos$tempPC2, Plum_Hp_neg$tempPC2)
+#    z 
+# 1.03 
 ```
 
-## Visualization
+# Visualization
+
+Color-palette
 
 ```{r}
-# Box Plot: ALL infected/uninfected 
-#Prep work:
-Hp_c <- c("#C5D8CF","#4F6D5A") #creates color palette for plot
-#df_p_hp$Haem_01 <- forcats::fct_relevel(df_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
+#Visualize dataset
+#Set colors for pathogen comparisons
+Hp_c <- c("#C5D8CF", "#4F6D5A")
+BEVI_c <- c("#F9F0CA","#F3DA44")
+GRVI_c <-c("#D8D8D6","#A0A0A0")
+PLVI_c <-c("#D7EDF9","#89B8EB")
+```
 
-#Plot:
-# Create a proportion bar chart
-Hp_TPC2_bar <- ggplot(df_p_hp, 
-                     aes(x = as.factor(tempPC2), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Hp_c) + # Apply custom colors
-  labs(x = "TPC2",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected vireos by TPC2") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") +
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "p = ", signif(HpTPC2_wilcox.prev.p, 2), 
-                  " r =", signif(HpTPC2_effsize.s, 2)), 
-                hjust = 1.1, vjust = 1.1, size = 4.5, color = "black", fontface = "italic")  # Add p-value annotation
-plot(Hp_TPC2_bar)
-#ggsave(Hp_TPC2_bar, filename="FigS1_AllSpp_Barplots_TPC2_20241223.pdf", bg="transparent", height=4.5, width=6, units="in")
-#------------------------------------------------
-#BEVI
-#Prep work:
-Bell_c <- c("#F9F0CA","#F3DA44") #creates color palette for plot
-#library(forcats)
-#Bells_p_hp$Haem_01 <- forcats::fct_relevel(Bells_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
+Species-specific box plots
 
-#Plot:
-# Create a proportion bar chart
-Bells_TPC2_bar <- ggplot(Bells_p_hp, 
-                     aes(x = as.factor(tempPC2), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Bell_c) + # Apply custom colors
-  labs(y = "Proportion") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  #theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Bell's p = ", signif(BellsTPC2_pearson.p, 2), 
-                  " w =", signif(BellsTPC2_effectsize.s, 2)), 
-                hjust = 1.1, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") #+ # Add p-value & effect size annotation
-#   easy_remove_axes(
-#   which = "y",
-#   teach = FALSE
-# )
-Bells_TPC2_bar
-
-#----------------------------------------------------------
-#GRVI
-#Prep work:
-Gray_c <-c("#D8D8D6", "#A0A0A0") #creates color palette for plot
-#Gray_p_hp$Haem_01 <- forcats::fct_relevel(Gray_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
-Gray_p_hp$tempPC2 <- as.integer(as.character(Gray_p_hp$tempPC2)) #change tempPC2 back into continuous variable instead of factor which was used in the chi-squared comparison above.
-
-#Plot: 
-# Create a proportion bar chart
-Gray_TPC2_bar <- ggplot(Gray_p_hp, 
-                     aes(x = as.factor(tempPC2), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Gray_c) + # Apply custom colors
-  #labs(x = "TPC2 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Gray vireos by TPC2") +
-  theme_minimal() +
-  #theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-  #      plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Gray p = ", signif(GrayTPC2_pearson.p, 2), 
-                  " w =", signif(GrayTPC2_effectsize.s, 2)), 
-                hjust = 1.4, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") + # Add p-value & effect size annotation
-easy_remove_axes(
-  which = "y",
-  teach = FALSE
+```{r}
+custom_fill_colors <- c(
+  "Bell's vireo.0" = BEVI_c[1],
+  "Bell's vireo.1" = BEVI_c[2],
+  "gray vireo.0"   = GRVI_c[1],
+  "gray vireo.1"   = GRVI_c[2],
+  "plumbeous vireo.0" = PLVI_c[1],
+  "plumbeous vireo.1" = PLVI_c[2]
 )
-Gray_TPC2_bar
+df$Haem_01 <- factor(df$Haem_01, levels = c("1", "0"))
+species_tpc2_prev_facet <- ggplot(
+  df, aes(x = Haem_01, y = tempPC2, fill = interaction(common_name, Haem_01))) +
+  geom_boxplot(
+    width = 0.8,  # wider boxes
+    size = 0.8,
+    outlier.shape = NA,
+    position = position_dodge(width = 3)) +
+  geom_jitter(
+    width = 0.1,
+    height = 0,
+    size = 3,
+    alpha = 0.6,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+    ) +
+  scale_fill_manual(values = custom_fill_colors, guide = "none") +
+  scale_x_discrete(
+    labels = c("pos", "neg")) +
+  scale_y_continuous(limits = c(-6, 8)) +
+  facet_wrap(~common_name, ncol = 3) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    panel.grid.major.y = element_line(color = "darkgray", size = 0.3, linetype = "dashed"),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.title.x = element_blank(),
+    strip.text = element_text(size = 13),
+    strip.background = element_blank(),     # Removes gray strip box
+    panel.spacing.x = unit(1, "lines"),     # Adjust inter-facet spacing
+    panel.border = element_blank(),         # Removes facet boxes
+    legend.position = "none") +
+  labs(y = "tempPC2")
+species_tpc2_prev_facet
+```
 
-#----------------------------------------------------------
-#PLVI
-#Prep work:
-Plum_c <-c("#D7EDF9","#89B8EB")#creates color palette for plot
-#Plum_p_hp$Haem_01 <- forcats::fct_relevel(Plum_p_hp$Haem_01, "1","0")  #flips x-axis factor levels so infected points are plotted first
+Overall box plots:
 
-#Plot:
-# Create a proportion bar chart (without Embudo outlier point)
-Plum_TPC2_bar <- ggplot(Plum_p_hp1, 
-                     aes(x = as.factor(tempPC2), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Plum_c) + # Apply custom colors
-  #labs(x = "TPC2 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Plumbeous vireos by TPC2") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Plumbeous p = ", signif(PlumTPC2_wilcox.prev1.p, 2), 
-                  " r =", signif(PlumTPC2_effsize1.s, 2)), 
-                hjust = 1.05, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") +
-  easy_remove_axes(
-  which = "y",
-  teach = FALSE
-)# Add p-value annotation
-Plum_TPC2_bar
+```{r}
+df$Haem_01 <- factor(df$Haem_01, levels = c("1", "0"))
+overall_tpc2_prev_plot <- ggplot(
+  df, aes(x = Haem_01, y = tempPC2, fill = Haem_01)) +
+  geom_boxplot(
+    width = 0.8,
+    size = 0.8,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    width = 0.1,
+    height = 0,
+    size = 3,
+    alpha = 0.6,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+  ) +
+  scale_fill_manual(values = c("0" = "#C5D8CF", "1" = "#4F6D5A"), guide = "none") +  # overall palette
+  scale_x_discrete(
+    labels = c("pos", "neg")
+  ) +
+  scale_y_continuous(limits = c(-6,8)) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    panel.grid.major.y = element_line(color = "darkgray", size = 0.3, linetype = "dashed"),
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),         # remove x-axis labels here
+    axis.ticks.x = element_blank(),        # and tick marks
+    panel.border = element_blank(),
+    legend.position = "none") +
+  labs(title = "Infection status across tempPC2")
+overall_tpc2_prev_plot
+```
 
+Figure S4 - tempPC2 v. infection status
+
+```{r}
 # PLOT ALL PANELS TOGETHER 
 library(patchwork)
-# Alternative layout option = BETTER, USE THIS ONE:
-combined_plot <- ((Hp_TPC2_bar) / 
-                   (Bells_TPC2_bar + 
-                   Gray_TPC2_bar + 
-                   Plum_TPC2_bar)) + 
-  plot_annotation(theme = theme_minimal())
-combined_plot <- combined_plot + theme(aspect.ratio = 1) 
-plot(combined_plot)
- ggsave(combined_plot, filename="FigS4.pdf", bg="transparent", height=10, width=10, units="in")
+final_combined_plot <- overall_tpc2_prev_plot / species_tpc2_prev_facet +
+  plot_layout(heights = c(1, 1))
+final_combined_plot
+
+ggsave(final_combined_plot, filename="FigS4_box.pdf", bg="transparent", height=10, width=10, units="in")
 ```
 
-## -----------------------------------------------
+# -----------------------------------------------
 
-# PPC1 v Status
+# precipPC1 v Status
 
-## All vireos: Not significant MW-U (p-value = 0.42, r = 0.051)
+## All vireos: Significant; MW-U (p-value = 0.018, r = 0.150)
+
+## BEVI: NOT Significant; MW-U (p-value =0.093, r = 0.384)
+
+## GRVI: NOT significant; MW-U (p-value = 0.587, r = 0.042)
+
+## PLVI: NOT significant; MW-U (p-value = 0.339, r = 0.127)
 
 ```{r}
+#Data prep:
+df_p_pos <- filter(df, df$Haem_01 =="1") #248
+df_p_neg <- filter(df, df$Haem_01 =="0") #73
 
-shapiro.test(df_p_pos$precipPC1)
+shapiro.test(df$precipPC1)
 # 	Shapiro-Wilk normality test
 # 
-# data:  df_p_pos$precipPC1
-# W = 0.74815, p-value = 5.196e-16
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# data:  df$precipPC1
+# W = 0.90884, p-value = 3.812e-11
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(df_p_neg$precipPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  df_p_neg$precipPC1
-# W = 0.52774, p-value = 5.874e-14
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.84722, p-value = 3.531e-07
+# FAILED - NOT NORMAL; USE MW-U
 
-qqPlot(df_p_hp$precipPC1)
-#Discrete PPC1s, not normally distributed.
+qqPlot(df$precipPC1)
+# Not normally distributed.
 
 # Wilcoxon Rank-Sum Test if data are not normal
-HpPPC1_wilcox.prev <- wilcox.test(precipPC1 ~ Haem_01, data = df_p_hp, exact = FALSE)
+HpPPC1_wilcox.prev <- wilcox.test(precipPC1 ~ Haem_01, data = df, exact = FALSE)
 HpPPC1_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  precipPC1 by Haem_01
-# W = 6712, p-value = 0.4201
+# W = 5175, p-value = 0.01822
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
 HpPPC1_wilcox.prev.p <-HpPPC1_wilcox.prev$p.value
 #Calculate effect size
-HpPPC1_effsize <- wilcox_effsize(df_p_hp, precipPC1 ~ Haem_01, alternative = "two.sided")
+HpPPC1_effsize <- wilcox_effsize(df, precipPC1 ~ Haem_01, alternative = "two.sided")
 print(HpPPC1_effsize)
-# A tibble: 1 × 7
+# # A tibble: 1 × 7
 #   .y.       group1 group2 effsize    n1    n2 magnitude
 # * <chr>     <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 precipPC1 0      1       0.0513    73   175 small  
+# 1 precipPC1 0      1        0.150    73   175 small  
 HpPPC1_effsize.s <- HpPPC1_effsize$effsize
+HpPPC1_wilcox.prev.p
+# [1] 0.01821644
+HpPPC1_effsize.s
+# Effect size (r) 
+#       0.1499975
 ```
 
-## Bell's Vireo: Significant, large effect MW-U (p-value = 0.013, r = 0.563)
+BEVI:
 
 ```{r}
-#Prep data:
-Bells_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Bell's Vireo")
+Bells_p_hp   <- subset(df, df$common_name == "Bell's vireo")
 Bells_Hp_pos <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "1")
 Bells_Hp_neg <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "0")
-
-plotNormalHistogram(Bells_p_hp$precipPC1) #NOT NORMAL DISTRIBUTION
-qqPlot(Bells_p_hp$precipPC1) #Discrete levels. Not normal distribution.
 
 shapiro.test(Bells_Hp_pos$precipPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Bells_Hp_pos$precipPC1
-# W = 0.73252, p-value = 0.001231
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.74464, p-value = 0.00177
+# NFAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Bells_Hp_neg$precipPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Bells_Hp_neg$precipPC1
-# W = 0.38984, p-value = 3.217e-07
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.51972, p-value = 1.091e-05
+# FAILED - NOT NORMAL; USE MW-U
 
-qqPlot(Bells_p_hp$precipPC1)
-#Discrete PPC1s, not normally distributed.
+qqPlot(Bells_p_hp$precipPC1) #Very discrete levels, not normal distribution 
 
 # Wilcoxon Rank-Sum Test if data are not normal
-BellsPPC1_wilcox.prev <- wilcox.test(precipPC1 ~ Haem_01, data = Bells_p_hp, exact = FALSE) 
+BellsPPC1_wilcox.prev <- wilcox.test(precipPC1 ~ Haem_01, data = Bells_p_hp, exact = FALSE)
 BellsPPC1_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  precipPC1 by Haem_01
-# W = 79, p-value = 0.01328
+# W = 27, p-value = 0.0934
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
-BellsPPC1_wilcox.prev.p <- BellsPPC1_wilcox.prev$p.value
+BellsPPC1_wilcox.prev.p <-BellsPPC1_wilcox.prev$p.value
+
 #Calculate effect size
 BellsPPC1_effsize <- wilcox_effsize(Bells_p_hp, precipPC1 ~ Haem_01, alternative = "two.sided")
 print(BellsPPC1_effsize)
-# A tibble: 1 × 7
+# # A tibble: 1 × 7
 #   .y.       group1 group2 effsize    n1    n2 magnitude
 # * <chr>     <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 precipPC1 1      0        0.563    11     9 large  
+# 1 precipPC1 0      1        0.384     9    11 moderate 
 BellsPPC1_effsize.s <- BellsPPC1_effsize$effsize
+BellsPPC1_wilcox.prev.p
+# [1] 0.09339767
+BellsPPC1_effsize.s
+# Effect size (r) 
+#       0.3836805 
+wilcoxonZ(Bells_Hp_pos$precipPC1, Bells_Hp_neg$precipPC1)
+#    z 
+# 1.72
 ```
 
-## Gray Vireo: Significant MW-U (p-value = 0.004, r = 0.219)
-
--   significant difference in mean PPC1 between Hp infected and uninfected samples.
--   as PPC1 decreases, probability of Hp infection increases
+GRVI:
 
 ```{r}
-#Prep data:
-Gray_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Gray Vireo")
+Gray_p_hp   <- subset(df, df$common_name == "gray vireo")
 Gray_Hp_pos <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "1")
-Gray_Hp_neg <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "0") 
-
-plotNormalHistogram(Gray_p_hp$precipPC1) #NOT NORMAL DISTRIBUTION
-qqPlot(Gray_p_hp$precipPC1) #Discrete levels. Not normal distribution.
+Gray_Hp_neg <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "0")
 
 shapiro.test(Gray_Hp_pos$precipPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Gray_Hp_pos$precipPC1
-# W = 0.57106, p-value < 2.2e-16
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.85009, p-value = 1.982e-09
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Gray_Hp_neg$precipPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Gray_Hp_neg$precipPC1
-# W = 0.28558, p-value = 6.866e-15
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.89509, p-value = 0.0001687
+# FAILED - NOT NORMAL; USE MW-U
 
-qqPlot(Gray_p_hp$precipPC1)
-#Discrete PPC1s, not normally distributed.
+qqPlot(Gray_p_hp$precipPC1) #Not normal distribution 
 
 # Wilcoxon Rank-Sum Test if data are not normal
-GrayPPC1_wilcox.prev <- wilcox.test(precipPC1 ~ Haem_01, data = Gray_p_hp, exact = FALSE) 
+GrayPPC1_wilcox.prev <- wilcox.test(precipPC1 ~ Haem_01, data = Gray_p_hp, exact = FALSE)
 GrayPPC1_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  precipPC1 by Haem_01
-# W = 2571, p-value = 0.004262
+# W = 3324.5, p-value = 0.5871
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
-GrayPPC1_wilcox.prev.p <- GrayPPC1_wilcox.prev$p.value
+GrayPPC1_wilcox.prev.p <-GrayPPC1_wilcox.prev$p.value
 #Calculate effect size
 GrayPPC1_effsize <- wilcox_effsize(Gray_p_hp, precipPC1 ~ Haem_01, alternative = "two.sided")
 print(GrayPPC1_effsize)
 # # A tibble: 1 × 7
 #   .y.       group1 group2 effsize    n1    n2 magnitude
 # * <chr>     <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 precipPC1 1      0        0.219   115    55 small  
+# 1 precipPC1 0      1       0.0418    55   115 small  
 GrayPPC1_effsize.s <- GrayPPC1_effsize$effsize
+GrayPPC1_wilcox.prev.p
+# [1] 0.5870948
+GrayPPC1_effsize.s
+# Effect size (r) 
+#      0.04177905  
+wilcoxonZ(Gray_Hp_pos$precipPC1, Gray_Hp_neg$precipPC1)
+#      z 
+# -0.545
 ```
 
-## Plumbeous Vireo w/ Embudo outlier: Not significant MW-U (p-value = 0.215, r = 0.165)
-
-## Plumbeous Vireo w/o Embudo outlier: Not significant MW-U (p-value = 0.281, r = 0.145)
+PLVI:
 
 ```{r}
 #Prep data:
-Plum_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Plumbeous Vireo")
+Plum_p_hp <- subset(df, df$common_name == "plumbeous vireo")
 Plum_Hp_pos <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "1") 
 Plum_Hp_neg <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "0") 
-
-plotNormalHistogram(Plum_p_hp$precipPC1) #NORMAL ENOUGH DISTRIBUTION
-qqPlot(Plum_p_hp$precipPC1) #Discrete levels. Not normally distributed.
 
 shapiro.test(Plum_Hp_pos$precipPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_pos$precipPC1
-# W = 0.74542, p-value = 7.426e-08
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.92642, p-value = 0.004521
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Plum_Hp_neg$precipPC1)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_neg$precipPC1
-# W = 0.38984, p-value = 3.217e-07
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.89368, p-value = 0.2176
+# PASSED  - NORMAL; COULD USE T-TEST
 
-qqPlot(Plum_p_hp$precipPC1)
-#Discrete PPC1s, not normally distributed.
+qqPlot(Plum_p_hp$precipPC1) #Not normal distribution
 
 # Wilcoxon Rank-Sum Test if data are not normal
-PlumPPC1_wilcox.prev <- wilcox.test(precipPC1 ~ Haem_01, data = Plum_p_hp, exact = FALSE) 
+PlumPPC1_wilcox.prev <- wilcox.test(precipPC1 ~ Haem_01, data = Plum_p_hp, exact = FALSE)
 PlumPPC1_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  precipPC1 by Haem_01
-# W = 270, p-value = 0.2147
+# W = 175.5, p-value = 0.339
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
-PlumPPC1_wilcox.prev.p <- PlumPPC1_wilcox.prev$p.value
+PlumPPC1_wilcox.prev.p <-PlumPPC1_wilcox.prev$p.value
+
 #Calculate effect size
 PlumPPC1_effsize <- wilcox_effsize(Plum_p_hp, precipPC1 ~ Haem_01, alternative = "two.sided")
 print(PlumPPC1_effsize)
-PlumPPC1_effsize.s <- PlumPPC1_effsize$effsize
-PlumPPC1_effsize.s
-# Effect size (r) 
-#       0.1645631
-#-----------------------------
-##WITHOUT EMBUDO OUTLIER:
-
-shapiro.test(Plum_Hp_pos1$precipPC1)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_Hp_pos1$precipPC1
-# W = 0.74542, p-value = 7.426e-08
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-shapiro.test(Plum_Hp_neg1$precipPC1)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_Hp_neg1$precipPC1
-# W = 0.4184, p-value = 1.047e-06
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-shapiro.test(Plum_p_hp1$precipPC1)
-# 	Shapiro-Wilk normality test
-# 
-# data:  Plum_p_hp1$precipPC1
-# W = 0.72212, p-value = 4.551e-09
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-qqPlot(Plum_p_hp1$precipPC1) #discrete levels, not normally distributed
-
-PlumPPC1_wilcox.prev1 <- wilcox.test(precipPC1 ~ Haem_01, data = Plum_p_hp1, exact = FALSE)
-PlumPPC1_wilcox.prev1
-# 	Wilcoxon rank sum test with continuity correction
-# 
-# data:  precipPC1 by Haem_01
-# W = 236.5, p-value = 0.2808
-# alternative hypothesis: true location shift is not equal to 0
-
-#save p-value for plots
-PlumPPC1_wilcox.prev1.p <-PlumPPC1_wilcox.prev1$p.value
-
-#Calculate effect size
-PlumPPC1_effsize1 <- wilcox_effsize(Plum_p_hp1, precipPC1 ~ Haem_01, alternative = "two.sided")
-print(PlumPPC1_effsize1)
-# A tibble: 1 × 7
+# # A tibble: 1 × 7
 #   .y.       group1 group2 effsize    n1    n2 magnitude
 # * <chr>     <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 precipPC1 0      1        0.145     8    49 small  
-PlumPPC1_effsize1.s <- PlumPPC1_effsize1$effsize
+# 1 precipPC1 0      1        0.127     9    49 small
+PlumPPC1_effsize.s <- PlumPPC1_effsize$effsize
+PlumPPC1_wilcox.prev.p
+# [1] 0.3389966
+PlumPPC1_effsize.s
+# Effect size (r) 
+#       0.1269593 
+wilcoxonZ(Plum_Hp_pos$precipPC1, Plum_Hp_neg$precipPC1)
+#     z 
+# 0.967
 ```
 
-## Visualization
+# Visualization
+
+Color-palette
 
 ```{r}
-# Box Plot: ALL infected/uninfected 
-#Prep work:
-Hp_c <- c("#C5D8CF", "#4F6D5A") #creates color palette for plot
-#df_p_hp$Haem_01 <- forcats::fct_relevel(df_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
+#Visualize dataset
+#Set colors for pathogen comparisons
+Hp_c <- c("#C5D8CF", "#4F6D5A")
+BEVI_c <- c("#F9F0CA","#F3DA44")
+GRVI_c <-c("#D8D8D6","#A0A0A0")
+PLVI_c <-c("#D7EDF9","#89B8EB")
+```
 
-#Plot:
-# Create a proportion bar chart
-Hp_PPC1_bar <- ggplot(df_p_hp, 
-                     aes(x = as.factor(precipPC1), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Hp_c) + # Apply custom colors
-  labs(x = "PPC1",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected vireos by PPC1") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") +
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "p = ", signif(HpPPC1_wilcox.prev.p, 2), 
-                  " r =", signif(HpPPC1_effsize.s, 2)), 
-                hjust = 1.1, vjust = 1.1, size = 4.5, color = "black", fontface = "italic")  # Add p-value annotation
-plot(Hp_PPC1_bar)
-#ggsave(Hp_PPC1_bar, filename="FigS1_AllSpp_Barplots_PPC1_20241223.pdf", bg="transparent", height=4.5, width=6, units="in")
-#------------------------------------------------
-#BEVI
-#Prep work:
-Bell_c <- c("#F9F0CA", "#F3DA44") #creates color palette for plot
-#library(forcats)
-#Bells_p_hp$Haem_01 <- forcats::fct_relevel(Bells_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
+Species-specific box plots
 
-#Plot:
-# Create a proportion bar chart
-Bells_PPC1_bar <- ggplot(Bells_p_hp, 
-                     aes(x = as.factor(precipPC1), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Bell_c) + # Apply custom colors
-  labs(y = "Proportion") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  #theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Bell's p = ", signif(BellsPPC1_wilcox.prev.p, 2), 
-                  " r =", signif(BellsPPC1_effsize.s, 2)), 
-                hjust = 1.1, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") #+ # Add p-value & effect size annotation
-#   easy_remove_axes(
-#   which = "y",
-#   teach = FALSE
-# )
-Bells_PPC1_bar
-
-#----------------------------------------------------------
-#GRVI
-#Prep work:
-Gray_c <-c("#D8D8D6","#A0A0A0") #creates color palette for plot
-#Gray_p_hp$Haem_01 <- forcats::fct_relevel(Gray_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
-Gray_p_hp$precipPC1 <- as.integer(as.character(Gray_p_hp$precipPC1)) #change precipPC1 back into continuous variable instead of factor which was used in the chi-squared comparison above.
-
-#Plot: 
-# Create a proportion bar chart
-Gray_PPC1_bar <- ggplot(Gray_p_hp, 
-                     aes(x = as.factor(precipPC1), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Gray_c) + # Apply custom colors
-  #labs(x = "PPC1 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Gray vireos by PPC1") +
-  theme_minimal() +
-  #theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-  #      plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Gray p = ", signif(GrayPPC1_wilcox.prev.p, 2), 
-                  " r =", signif(GrayPPC1_effsize.s, 2)), 
-                hjust = 1.4, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") + # Add p-value & effect size annotation
-easy_remove_axes(
-  which = "y",
-  teach = FALSE
+```{r}
+custom_fill_colors <- c(
+  "Bell's vireo.0" = BEVI_c[1],
+  "Bell's vireo.1" = BEVI_c[2],
+  "gray vireo.0"   = GRVI_c[1],
+  "gray vireo.1"   = GRVI_c[2],
+  "plumbeous vireo.0" = PLVI_c[1],
+  "plumbeous vireo.1" = PLVI_c[2]
 )
-Gray_PPC1_bar
 
-#----------------------------------------------------------
-#PLVI
-#Prep work:
-Plum_c <-c("#D7EDF9", "#89B8EB")#creates color palette for plot
-#Plum_p_hp1$Haem_01 <- forcats::fct_relevel(Plum_p_hp1$Haem_01, "1","0")  #flips x-axis factor levels so infected points are plotted first
+df$Haem_01 <- factor(df$Haem_01, levels = c("1", "0"))
+species_ppc1_prev_facet <- ggplot(
+  df, aes(x = Haem_01, y = precipPC1, fill = interaction(common_name, Haem_01))) +
+  geom_boxplot(
+    width = 0.8,  # wider boxes
+    size = 0.8,
+    outlier.shape = NA,
+    position = position_dodge(width = 3)) +
+  geom_jitter(
+    width = 0.1,
+    height = 0,
+    size = 3,
+    alpha = 0.6,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+    ) +
+  scale_fill_manual(values = custom_fill_colors, guide = "none") +
+  scale_x_discrete(
+    labels = c("pos", "neg")) +
+  scale_y_continuous(limits = c(-6, 8)) +
+  facet_wrap(~common_name, ncol = 3) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    panel.grid.major.y = element_line(color = "darkgray", size = 0.3, linetype = "dashed"),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.title.x = element_blank(),
+    strip.text = element_text(size = 13),
+    strip.background = element_blank(),     # Removes gray strip box
+    panel.spacing.x = unit(1, "lines"),     # Adjust inter-facet spacing
+    panel.border = element_blank(),         # Removes facet boxes
+    legend.position = "none") +
+  labs(y = "precipPC1")
+species_ppc1_prev_facet
+```
 
-#Plot:
-# Create a proportion bar chart (without Embudo outlier point)
-Plum_PPC1_bar <- ggplot(Plum_p_hp1, 
-                     aes(x = as.factor(precipPC1), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Plum_c) + # Apply custom colors
-  #labs(x = "PPC1 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Plumbeous vireos by PPC1") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Plumbeous p = ", signif(PlumPPC1_wilcox.prev1.p, 2), 
-                  " r =", signif(PlumPPC1_effsize1.s, 2)), 
-                hjust = 1.05, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") +
-  easy_remove_axes(
-  which = "y",
-  teach = FALSE
-)# Add p-value annotation
-Plum_PPC1_bar
+Overall box plots:
 
+```{r}
+df$Haem_01 <- factor(df$Haem_01, levels = c("1", "0"))
+overall_ppc1_prev_plot <- ggplot(
+  df, aes(x = Haem_01, y = precipPC1, fill = Haem_01)) +
+  geom_boxplot(
+    width = 0.8,
+    size = 0.8,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    width = 0.1,
+    height = 0,
+    size = 3,
+    alpha = 0.6,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+  ) +
+  scale_fill_manual(values = c("0" = "#C5D8CF", "1" = "#4F6D5A"), guide = "none") +  # overall palette
+  scale_x_discrete(
+    labels = c("pos", "neg")
+  ) +
+  scale_y_continuous(limits = c(-6,8)) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    panel.grid.major.y = element_line(color = "darkgray", size = 0.3, linetype = "dashed"),
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),         # remove x-axis labels here
+    axis.ticks.x = element_blank(),        # and tick marks
+    panel.border = element_blank(),
+    legend.position = "none") +
+  labs(title = "Infection status across precipPC1")
+overall_ppc1_prev_plot
+```
+
+Figure S5 - precipPC1 v. infection status
+
+```{r}
 # PLOT ALL PANELS TOGETHER 
 library(patchwork)
-# Alternative layout option = BETTER, USE THIS ONE:
-combined_plot <- ((Hp_PPC1_bar) / 
-                   (Bells_PPC1_bar + 
-                   Gray_PPC1_bar + 
-                   Plum_PPC1_bar)) + 
-  plot_annotation(theme = theme_minimal())
-combined_plot <- combined_plot + theme(aspect.ratio = 1) 
-plot(combined_plot)
- ggsave(combined_plot, filename="FigS5.pdf", bg="transparent", height=10, width=10, units="in")
+final_combined_plot <- overall_ppc1_prev_plot / species_ppc1_prev_facet +
+  plot_layout(heights = c(1, 1))
+final_combined_plot
+
+ggsave(final_combined_plot, filename="FigS5_box.pdf", bg="transparent", height=10, width=10, units="in")
 ```
 
-## -----------------------------------------------
+# -----------------------------------------------
 
-# PPC2 v Status
+# precipPC2 v Status
 
-## All vireos: Significant MW-U (p-value = 0.002, r = 0.192)
+## All vireos: Significant; MW-U (p-value = 0.004, r = 0.179)
+
+## BEVI: NOT Significant; MW-U (p-value = 0.401, r = 0.196)
+
+## GRVI: NEAR Significant; MW-U (p-value = 0.057, r = 0.145)
+
+## PLVI: Significant; MW-U (p-value = 0.042, r = 0.268 )
 
 ```{r}
-shapiro.test(df_p_pos$precipPC2)
+#Data prep:
+df_p_pos <- filter(df, df$Haem_01 =="1") #248
+df_p_neg <- filter(df, df$Haem_01 =="0") #73
+
+shapiro.test(df$precipPC2)
 # 	Shapiro-Wilk normality test
 # 
-# data:  df_p_pos$precipPC2
-# W = 0.61639, p-value < 2.2e-16
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# data:  df$precipPC2
+# W = 0.68725, p-value < 2.2e-16
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(df_p_neg$precipPC2)
 # 	Shapiro-Wilk normality test
 # 
 # data:  df_p_neg$precipPC2
-# W = 0.15315, p-value < 2.2e-16
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.63798, p-value = 3.956e-12
+# FAILED - NOT NORMAL; USE MW-U
 
-qqPlot(df_p_hp$precipPC2)
-#Discrete PPC2s, not normally distributed.
+qqPlot(df$precipPC2)
+# Not normally distributed.
 
 # Wilcoxon Rank-Sum Test if data are not normal
-HpPPC2_wilcox.prev <- wilcox.test(precipPC2 ~ Haem_01, data = df_p_hp, exact = FALSE)
+HpPPC2_wilcox.prev <- wilcox.test(precipPC2 ~ Haem_01, data = df, exact = FALSE)
 HpPPC2_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  precipPC2 by Haem_01
-# W = 7406.5, p-value = 0.002446
+# W = 4939, p-value = 0.004788
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
 HpPPC2_wilcox.prev.p <-HpPPC2_wilcox.prev$p.value
 #Calculate effect size
-HpPPC2_effsize <- wilcox_effsize(df_p_hp, precipPC2 ~ Haem_01, alternative = "two.sided")
+HpPPC2_effsize <- wilcox_effsize(df, precipPC2 ~ Haem_01, alternative = "two.sided")
 print(HpPPC2_effsize)
-# A tibble: 1 × 7
+# # A tibble: 1 × 7
 #   .y.       group1 group2 effsize    n1    n2 magnitude
 # * <chr>     <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 precipPC2 0      1        0.192    73   175 small 
+# 1 precipPC2 0      1        0.179    73   175 small  
 HpPPC2_effsize.s <- HpPPC2_effsize$effsize
+HpPPC2_wilcox.prev.p
+# [1] 0.004788038
+HpPPC2_effsize.s
+# Effect size (r) 
+#       0.1791929
 ```
 
-## Bell's Vireo: Not significant χ2 (p-value = 1, w = -0.099)
+BEVI:
 
 ```{r}
-#Prep data:
-Bells_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Bell's Vireo")
+Bells_p_hp   <- subset(df, df$common_name == "Bell's vireo")
 Bells_Hp_pos <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "1")
 Bells_Hp_neg <- filter(Bells_p_hp, Bells_p_hp$Haem_01 == "0")
 
-plotNormalHistogram(Bells_p_hp$precipPC2) #NORMAL ENOUGH DISTRIBUTION
-qqPlot(Bells_p_hp$precipPC2) #Not normal range of points.
-#NOT ENOUGH VARIATION TO RUN T-TEST, CONSIDER CHI-SQUARED INSTEAD
-Bells_p_hp$precipPC2 <- as.factor(Bells_p_hp$precipPC2)
-
-Bells.HpPPC2.chi <- chisq.test(table(Bells_p_hp$precipPC2, Bells_p_hp$Haem_01))
-Bells.HpPPC2.chi
-# 	Pearson's Chi-squared test with Yates' continuity correction
+shapiro.test(Bells_Hp_pos$precipPC2)
+# 	Shapiro-Wilk normality test
 # 
-# data:  table(Bells_p_hp$precipPC2, Bells_p_hp$Haem_01)
-# X-squared = 2.6561e-31, df = 1, p-value = 1
-#NO SIGNIFICANT DIFFERENCE IN PPC2 vs INFECTED AND UNINFECTED BELL'S VIREO
-BellsPPC2_pearson.p <- Bells.HpPPC2.chi$p.value
+# data:  Bells_Hp_pos$precipPC2
+# W = 0.84093, p-value = 0.03248
+# NFAILED - NOT NORMAL; USE MW-U
 
-#Phi is used when the contingency table is 2x2 (uninfected vs infected, 32 vs 38); where n = the number of observations. A value of .1 is considered a small effect, .3 a medium effect, and .5 a large effect.More info: https://real-statistics.com/chi-square-and-f-distributions/effect-size-chi-square/
+shapiro.test(Bells_Hp_neg$precipPC2)
+# 	Shapiro-Wilk normality test
+# 
+# data:  Bells_Hp_neg$precipPC2
+# W = 0.77008, p-value = 0.009256
+# FAILED - NOT NORMAL; USE MW-U
 
-BellsPPC2_table <- table(Bells_p_hp$precipPC2, Bells_p_hp$Haem_01)
-BellsPPC2_effectsize.s <- phi(BellsPPC2_table)
-BellsPPC2_effectsize.s
-#    phi 
-# 0.0985 
+qqPlot(Bells_p_hp$precipPC2) #Very discrete levels, not normal distribution 
+
+# Wilcoxon Rank-Sum Test if data are not normal
+BellsPPC2_wilcox.prev <- wilcox.test(precipPC2 ~ Haem_01, data = Bells_p_hp, exact = FALSE)
+BellsPPC2_wilcox.prev
+# 	Wilcoxon rank sum test with continuity correction
+# 
+# data:  precipPC2 by Haem_01
+# W = 61, p-value = 0.4015
+# alternative hypothesis: true location shift is not equal to 0
+
+#save p-value for plots
+BellsPPC2_wilcox.prev.p <-BellsPPC2_wilcox.prev$p.value
+
+#Calculate effect size
+BellsPPC2_effsize <- wilcox_effsize(Bells_p_hp, precipPC2 ~ Haem_01, alternative = "two.sided")
+print(BellsPPC2_effsize)
+# A tibble: 1 × 7
+#   .y.       group1 group2 effsize    n1    n2 magnitude
+# * <chr>     <chr>  <chr>    <dbl> <int> <int> <ord>    
+# 1 precipPC2 0      1        0.196     9    11 small 
+BellsPPC2_effsize.s <- BellsPPC2_effsize$effsize
+BellsPPC2_wilcox.prev.p
+# [1] 0.401542
+BellsPPC2_effsize.s
+# Effect size (r) 
+#       0.1961034 
+wilcoxonZ(Bells_Hp_pos$precipPC2, Bells_Hp_neg$precipPC2)
+#      z 
+# -0.877 
 ```
 
-```{r fig.width = 5, fig.height= 5}
-#Hp-----------------------------------------------
-#Pearson's residuals of Chi-squared test
-library(corrplot)
-
-BellsHp.PPC2.corr <- "Pearson's Residual Score"
-corrplot(Bells.HpPPC2.chi$residuals, 
-         title = BellsHp.PPC2.corr, 
-         is.cor = FALSE)
-```
-
-Less uninfected at -1 and more infected, but not significant.
-
-## Gray Vireo: Significant χ2 (p-value = 0.042, w = 0.182)
-
--   significant difference in expected vs. observed PPC2 between Hp infected and uninfected samples.
--   as PPC2 increases, probability of Hp infection increases
+GRVI:
 
 ```{r}
-#Prep data:
-Gray_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Gray Vireo")
+Gray_p_hp   <- subset(df, df$common_name == "gray vireo")
 Gray_Hp_pos <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "1")
-Gray_Hp_neg <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "0") 
+Gray_Hp_neg <- filter(Gray_p_hp, Gray_p_hp$Haem_01 == "0")
 
-plotNormalHistogram(Gray_p_hp$precipPC2) #NORMAL ENOUGH DISTRIBUTION
-qqPlot(Gray_p_hp$precipPC2) #Not normal range of points.
-#NOT ENOUGH VARIATION TO RUN T-TEST, CONSIDER CHI-SQUARED INSTEAD
-
-Gray_p_hp$precipPC2 <- as.factor(Gray_p_hp$precipPC2)
-
-Gray.HpPPC2.chi <- chisq.test(table(Gray_p_hp$precipPC2, Gray_p_hp$Haem_01))
-Gray.HpPPC2.chi
-# 	Pearson's Chi-squared test with Yates' continuity correction
+shapiro.test(Gray_Hp_pos$precipPC2)
+# 	Shapiro-Wilk normality test
 # 
-# data:  table(Gray_p_hp$precipPC2, Gray_p_hp$Haem_01)
-# X-squared = 4.1553, df = 1, p-value = 0.0415
-#SIGNIFICANT DIFFERENCE IN PPC2 vs INFECTED AND UNINFECTED BELL'S VIREO
+# data:  Gray_Hp_pos$precipPC2
+# W = 0.39631, p-value < 2.2e-16
+# FAILED - NOT NORMAL; USE MW-U
 
-GrayPPC2_pearson.p <- Gray.HpPPC2.chi$p.value
+shapiro.test(Gray_Hp_neg$precipPC2)
+# 	Shapiro-Wilk normality test
+# 
+# data:  Gray_Hp_neg$precipPC2
+# W = 0.78741, p-value = 1.704e-07
+# FAILED - NOT NORMAL; USE MW-U
 
-#Phi is used when the contingency table is 2x2 (uninfected vs infected, 32 vs 38); where n = the number of observations. A value of .1 is considered a small effect, .3 a medium effect, and .5 a large effect.More info: https://real-statistics.com/chi-square-and-f-distributions/effect-size-chi-square/
- 
-GrayPPC2_table <- table(Gray_p_hp$precipPC2, Gray_p_hp$Haem_01)
-GrayPPC2_effectsize.s <- phi(GrayPPC2_table)
-GrayPPC2_effectsize.s
-#   phi 
-# 0.182 
+qqPlot(Gray_p_hp$precipPC2) #Not normal distribution 
+
+# Wilcoxon Rank-Sum Test if data are not normal
+GrayPPC2_wilcox.prev <- wilcox.test(precipPC2 ~ Haem_01, data = Gray_p_hp, exact = FALSE)
+GrayPPC2_wilcox.prev
+# 	Wilcoxon rank sum test with continuity correction
+# 
+# data:  precipPC2 by Haem_01
+# W = 2596.5, p-value = 0.05723
+# alternative hypothesis: true location shift is not equal to 0
+
+#save p-value for plots
+GrayPPC2_wilcox.prev.p <-GrayPPC2_wilcox.prev$p.value
+#Calculate effect size
+GrayPPC2_effsize <- wilcox_effsize(Gray_p_hp, precipPC2 ~ Haem_01, alternative = "two.sided")
+print(GrayPPC2_effsize)
+# # A tibble: 1 × 7
+#   .y.       group1 group2 effsize    n1    n2 magnitude
+# * <chr>     <chr>  <chr>    <dbl> <int> <int> <ord>    
+# 1 precipPC2 0      1        0.146    55   115 small  
+GrayPPC2_effsize.s <- GrayPPC2_effsize$effsize
+GrayPPC2_wilcox.prev.p
+# [1] 0.05723411
+GrayPPC2_effsize.s
+# Effect size (r) 
+#      0.1459688 
+wilcoxonZ(Gray_Hp_pos$precipPC2, Gray_Hp_neg$precipPC2)
+#   z 
+# 1.9
 ```
 
-```{r fig.width = 5, fig.height= 5}
-#Hp-----------------------------------------------
-#Pearson's residuals of Chi-squared test
-library(corrplot)
-
-GrayHp.PPC2.corr <- "Pearson's Residual Score"
-corrplot(Gray.HpPPC2.chi$residuals, 
-         title = GrayHp.PPC2.corr, 
-         is.cor = FALSE)
-```
-
-## Plumbeous Vireo w/ Embudo outlier: Nearly significant MW-U (p-value = 0.056, r = 0.192)
-
-## Plumbeous Vireo w/o Embudo outlier: Not significant MW-U (p-value = 0.064, r = 0.246)
+PLVI:
 
 ```{r}
 #Prep data:
-Plum_p_hp <- subset(df_p_hp, df_p_hp$common_name == "Plumbeous Vireo")
+Plum_p_hp <- subset(df, df$common_name == "plumbeous vireo")
 Plum_Hp_pos <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "1") 
 Plum_Hp_neg <- filter(Plum_p_hp, Plum_p_hp$Haem_01 == "0") 
-
-plotNormalHistogram(Plum_p_hp$precipPC2) #NOT NORMAL DISTRIBUTION
-qqPlot(Plum_p_hp$precipPC2) #Discrete levels. Not normal distribution.
 
 shapiro.test(Plum_Hp_pos$precipPC2)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_pos$precipPC2
-# W = 0.85865, p-value = 3.153e-05
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.86176, p-value = 3.849e-05
+# FAILED - NOT NORMAL; USE MW-U
 
 shapiro.test(Plum_Hp_neg$precipPC2)
 # 	Shapiro-Wilk normality test
 # 
 # data:  Plum_Hp_neg$precipPC2
-# W = 0.38984, p-value = 3.217e-07
-# FAILED - NOT NORMAL; USE WILCOX.TEST
+# W = 0.78186, p-value = 0.01265
+# PASSED  - NORMAL; COULD USE T-TEST
 
-qqPlot(Plum_p_hp$precipPC2)
-#Discrete PPC2s, not normally distributed.
+qqPlot(Plum_p_hp$precipPC2) #Not normal distribution
 
 # Wilcoxon Rank-Sum Test if data are not normal
 PlumPPC2_wilcox.prev <- wilcox.test(precipPC2 ~ Haem_01, data = Plum_p_hp, exact = FALSE)
@@ -2740,211 +2474,1123 @@ PlumPPC2_wilcox.prev
 # 	Wilcoxon rank sum test with continuity correction
 # 
 # data:  precipPC2 by Haem_01
-# W = 302, p-value = 0.05623
+# W = 125.5, p-value = 0.04231
 # alternative hypothesis: true location shift is not equal to 0
 
 #save p-value for plots
 PlumPPC2_wilcox.prev.p <-PlumPPC2_wilcox.prev$p.value
+
 #Calculate effect size
-PlumPPC2_effsize <- wilcox_effsize(df_p_hp, precipPC2 ~ Haem_01, alternative = "two.sided")
+PlumPPC2_effsize <- wilcox_effsize(Plum_p_hp, precipPC2 ~ Haem_01, alternative = "two.sided")
 print(PlumPPC2_effsize)
 # # A tibble: 1 × 7
 #   .y.       group1 group2 effsize    n1    n2 magnitude
 # * <chr>     <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 precipPC2 0      1        0.192    73   175 small  
+# 1 precipPC2 0      1        0.268     9    49 small 
 PlumPPC2_effsize.s <- PlumPPC2_effsize$effsize
+PlumPPC2_wilcox.prev.p
+# [1] 0.04230827
+PlumPPC2_effsize.s
+# Effect size (r) 
+#       0.2680251
+wilcoxonZ(Plum_Hp_pos$precipPC2, Plum_Hp_neg$precipPC2)
+#    z 
+# 2.04
+```
 
-#----------------------------------------
-##WITHOUT EMBUDO OUTLIER:
+## Visualization
 
-shapiro.test(Plum_Hp_pos1$precipPC2)
-# 	Shapiro-Wilk normality test
+Color-palette
+
+```{r}
+#Visualize dataset
+#Set colors for pathogen comparisons
+Hp_c <- c("#C5D8CF", "#4F6D5A")
+BEVI_c <- c("#F9F0CA","#F3DA44")
+GRVI_c <-c("#D8D8D6","#A0A0A0")
+PLVI_c <-c("#D7EDF9","#89B8EB")
+```
+
+Species-specific box plots
+
+```{r}
+custom_fill_colors <- c(
+  "Bell's vireo.0" = BEVI_c[1],
+  "Bell's vireo.1" = BEVI_c[2],
+  "gray vireo.0"   = GRVI_c[1],
+  "gray vireo.1"   = GRVI_c[2],
+  "plumbeous vireo.0" = PLVI_c[1],
+  "plumbeous vireo.1" = PLVI_c[2]
+)
+
+df$Haem_01 <- factor(df$Haem_01, levels = c("1", "0"))
+species_ppc2_prev_facet <- ggplot(
+  df, aes(x = Haem_01, y = precipPC2, fill = interaction(common_name, Haem_01))) +
+  geom_boxplot(
+    width = 0.8,  # wider boxes
+    size = 0.8,
+    outlier.shape = NA,
+    position = position_dodge(width = 3)) +
+  geom_jitter(
+    width = 0.1,
+    height = 0,
+    size = 3,
+    alpha = 0.6,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+    ) +
+  scale_fill_manual(values = custom_fill_colors, guide = "none") +
+  scale_x_discrete(
+    labels = c("pos", "neg")) +
+  scale_y_continuous(limits = c(-4, 8), breaks = c(-4, 0, 4, 8)) +
+  facet_wrap(~common_name, ncol = 3) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    panel.grid.major.y = element_line(color = "darkgray", size = 0.3, linetype = "dashed"),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.title.x = element_blank(),
+    strip.text = element_text(size = 13),
+    strip.background = element_blank(),     # Removes gray strip box
+    panel.spacing.x = unit(1, "lines"),     # Adjust inter-facet spacing
+    panel.border = element_blank(),         # Removes facet boxes
+    legend.position = "none") +
+  labs(y = "precipPC2")
+species_ppc2_prev_facet
+```
+
+Overall box plots:
+
+```{r}
+df$Haem_01 <- factor(df$Haem_01, levels = c("1", "0"))
+overall_ppc2_prev_plot <- ggplot(
+  df, aes(x = Haem_01, y = precipPC2, fill = Haem_01)) +
+  geom_boxplot(
+    width = 0.8,
+    size = 0.8,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    width = 0.1,
+    height = 0,
+    size = 3,
+    alpha = 0.6,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+  ) +
+  scale_fill_manual(values = c("0" = "#C5D8CF", "1" = "#4F6D5A"), guide = "none") +  # overall palette
+  scale_x_discrete(
+    labels = c("pos", "neg")
+  ) +
+  scale_y_continuous(limits = c(-4,6)) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    panel.grid.major.y = element_line(color = "darkgray", size = 0.3, linetype = "dashed"),
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),         # remove x-axis labels here
+    axis.ticks.x = element_blank(),        # and tick marks
+    panel.border = element_blank(),
+    legend.position = "none") +
+  labs(title = "Infection status across precipPC2")
+overall_ppc2_prev_plot
+```
+
+Figure S6 - precipPC2 v. infection status
+
+```{r}
+# PLOT ALL PANELS TOGETHER 
+library(patchwork)
+final_combined_plot <- overall_ppc2_prev_plot / species_ppc2_prev_facet +
+  plot_layout(heights = c(1, 1))
+final_combined_plot
+
+ggsave(final_combined_plot, filename="FigS6_box.pdf", bg="transparent", height=10, width=10, units="in")
+```
+
+Figure S2-6 - Environment v. infection status
+
+```{r}
+# PLOT ALL PANELS TOGETHER 
+library(patchwork)
+final_combined_plot <- species_lat_prev_facet / species_tpc1_prev_facet / species_tpc2_prev_facet / species_ppc1_prev_facet / species_ppc2_prev_facet +
+  plot_layout(heights = c(1,1,1,1,1))
+final_combined_plot
+ggsave(final_combined_plot, filename="FigS2-6.pdf", bg="transparent", height=20, width=10, units="in")
+```
+
+Figure - Significant environment v infection status
+
+```{r}
+# PLOT ALL PANELS TOGETHER 
+library(patchwork)
+final_combined_plot <-  species_tpc2_prev_facet / species_ppc1_prev_facet +
+  plot_layout(heights = c(1,1))
+final_combined_plot
+ggsave(final_combined_plot, filename="Fig4.1.pdf", bg="transparent", height=12, width=10, units="in")
+```
+
+# -----------------------------------------------
+
+# Environmental variables - Fixed Effects Linear Regression
+
+# -----------------------------------------------
+
+# BEVI Model Selection (Infection probability ~ elevation + tempPC1 1 is best); but unreliable
+The limited nature of our sampling makes the results of any linear test unreliable due to large standard errors and small statistical power. We go through the code below for BEVI samples recognizing this.
+
+```{r}
+set.seed(123)
+BEVI_df <- subset(df, df$common_name == "Bell's vireo") #20
+
+#Standard linear regression with parasitemia as our response and environmental variables as our predictors.
+BEVI_model_df <- subset(BEVI_df, select = c("Haem_01",
+                                  "analysis_lat",
+                                  "analysis_elev",
+                                  "tempPC1",
+                                  "tempPC2",
+                                  "precipPC1",
+                                  "precipPC2"
+                                  ))
+
+BEVI_model_df$Haem_01 <- as.numeric(as.character(BEVI_df$Haem_01))
+
+# Fit the full model
+BEVI_prev.full.fixed <- glm(Haem_01 ~ 
+               analysis_lat + 
+               analysis_elev + 
+               tempPC1 + 
+               tempPC2 + 
+               precipPC1 + 
+               precipPC2
+             , data = BEVI_model_df
+             , family = binomial
+             , na.action=na.fail
+             ) 
+
+summary(BEVI_prev.full.fixed)
+# Call:
+# glm(formula = Haem_01 ~ analysis_lat + analysis_elev + tempPC1 + 
+#     tempPC2 + precipPC1 + precipPC2, family = binomial, data = BEVI_model_df, 
+#     na.action = na.fail)
 # 
-# data:  Plum_Hp_pos1$precipPC2
-# W = 0.85865, p-value = 3.153e-05
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-shapiro.test(Plum_Hp_neg1$precipPC2)
-# 	Shapiro-Wilk normality test
+# Coefficients:
+#                 Estimate Std. Error z value Pr(>|z|)
+# (Intercept)   -1.645e+04  3.998e+06  -0.004    0.997
+# analysis_lat   8.696e+02  1.330e+05   0.007    0.995
+# analysis_elev -7.986e+00  9.761e+02  -0.008    0.993
+# tempPC1       -6.059e+02  8.136e+04  -0.007    0.994
+# tempPC2        8.448e+02  1.113e+05   0.008    0.994
+# precipPC1      1.257e+03  1.546e+05   0.008    0.994
+# precipPC2     -1.605e+02  6.783e+04  -0.002    0.998
 # 
-# data:  Plum_Hp_neg1$precipPC2
-# W = 0.4184, p-value = 1.047e-06
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-shapiro.test(Plum_p_hp1$precipPC2)
-# 	Shapiro-Wilk normality test
+# (Dispersion parameter for binomial family taken to be 1)
 # 
-# data:  Plum_p_hp1$precipPC2
-# W = 0.84673, p-value = 3.947e-06
-# FAILED - NOT NORMAL; USE WILCOX.TEST
-
-qqPlot(Plum_p_hp1$precipPC2) #discrete levels, not normally distributed
-
-PlumPPC2_wilcox.prev1 <- wilcox.test(precipPC2 ~ Haem_01, data = Plum_p_hp1, exact = FALSE)
-PlumPPC2_wilcox.prev1
-# 	Wilcoxon rank sum test with continuity correction
+#     Null deviance: 2.7526e+01  on 19  degrees of freedom
+# Residual deviance: 1.6714e-07  on 13  degrees of freedom
+# AIC: 14
 # 
-# data:  precipPC2 by Haem_01
-# W = 270, p-value = 0.06463
-# alternative hypothesis: true location shift is not equal to 0
+# Number of Fisher Scoring iterations: 25
+```
 
-#save p-value for plots
-PlumPPC2_wilcox.prev1.p <-PlumPPC2_wilcox.prev1$p.value
+## Evaluating multicollinearity
 
-#Calculate effect size
-PlumPPC2_effsize1 <- wilcox_effsize(Plum_p_hp1, precipPC2 ~ Haem_01, alternative = "two.sided")
-print(PlumPPC2_effsize1)
-# # A tibble: 1 × 7
-#   .y.       group1 group2 effsize    n1    n2 magnitude
-# * <chr>     <chr>  <chr>    <dbl> <int> <int> <ord>    
-# 1 precipPC2 0      1        0.246     8    49 small 
-PlumPPC2_effsize1.s <- PlumPPC2_effsize1$effsize
+```{r}
+# Check multicollinearity
+vif(BEVI_prev.full.fixed)
+ # analysis_lat analysis_elev       tempPC1       tempPC2     precipPC1     precipPC2 
+ #   1821.76473    1077.66803      70.63412    3543.92364    9762.37584     992.50375  
+# Because of the small sample size, we see high correlation between every variable
+cor(BEVI_model_df[, c("analysis_elev"
+                 , "analysis_lat"
+                 , "tempPC1"
+                 , "tempPC2"
+                 , "precipPC1"
+                 , "precipPC2"
+                 )], use = "complete.obs")
+
+#               analysis_elev analysis_lat    tempPC1    tempPC2  precipPC1  precipPC2
+# analysis_elev     1.0000000    0.4923788  0.8135349  0.2659004 -0.5068402  0.1783091
+# analysis_lat      0.4923788    1.0000000  0.7487942  0.8845165 -0.9329774  0.8552378
+# tempPC1           0.8135349    0.7487942  1.0000000  0.4279942 -0.7837283  0.3350063
+# tempPC2           0.2659004    0.8845165  0.4279942  1.0000000 -0.8546104  0.9796082
+# precipPC1        -0.5068402   -0.9329774 -0.7837283 -0.8546104  1.0000000 -0.7753166
+# precipPC2         0.1783091    0.8552378  0.3350063  0.9796082 -0.7753166  1.0000000
+# Look at distributions
+p <- ggpairs(BEVI_prev.full.fixed,
+       # mapping = aes(color = common_name),
+        upper = list(continuous = wrap("cor", size = 3)),
+        lower = list(continuous = wrap("smooth", alpha = 0.5, size = 0.3)),
+        diag = list(continuous = wrap("densityDiag", alpha = 0.4))) +
+  theme_bw()
+#print(p)
+```
+
+We don't need latitude in this case, as it is a 1:1 for precipPC2 which is more insightful ecologically. Additionally, elevation in this group is captured by precipPC1 at almost a 1:1, but there are certain aspects of elevation that are physiologically important outside of elevations affect on temperature and precipitation, so we'll keep both.
+
+```{r}
+BEVI_model_df <- subset(BEVI_df, select = c("Haem_01",
+                                  "rowID",
+                                #  "analysis_lat",
+                                  "analysis_elev",
+                                  "tempPC1",
+                                  "tempPC2",
+                                  "precipPC1",
+                                  "precipPC2"
+                                  ))
+
+
+# Fit model #1 (without latitude)
+BEVI_prev.full.fixed <- glm(Haem_01 ~ 
+              # analysis_lat + 
+               analysis_elev + 
+               tempPC1 + 
+               tempPC2 + 
+               precipPC1 + 
+               precipPC2
+             , data = BEVI_model_df
+             , family = binomial
+             , na.action=na.fail
+             ) 
+
+# Warning message:
+# glm.fit: fitted probabilities numerically 0 or 1 occurred 
+
+summary(BEVI_prev.full.fixed)
+# Call:
+# glm(formula = Haem_01 ~ analysis_elev + tempPC1 + tempPC2 + precipPC1 + 
+#     precipPC2, family = binomial, data = BEVI_model_df, na.action = na.fail)
+# 
+# Coefficients:
+#                Estimate Std. Error z value Pr(>|z|)
+# (Intercept)   1020.1091   800.3558   1.275    0.202
+# analysis_elev   -0.5657     0.4331  -1.306    0.192
+# tempPC1        -19.1218    15.4782  -1.235    0.217
+# tempPC2         59.7947    39.9789   1.496    0.135
+# precipPC1       93.5062    67.9593   1.376    0.169
+# precipPC2       32.7439    33.3416   0.982    0.326
+# 
+# (Dispersion parameter for binomial family taken to be 1)
+# 
+#     Null deviance: 27.5256  on 19  degrees of freedom
+# Residual deviance:  7.8218  on 14  degrees of freedom
+# AIC: 19.822
+# 
+# Number of Fisher Scoring iterations: 14
+```
+
+## Model selection for global additive only model
+
+```{r}
+# Candidate models
+# Univariate
+mod_null          <- glm(Haem_01 ~ 1, data = BEVI_model_df, family = binomial)
+mod_temp1         <- glm(Haem_01 ~ tempPC1, data = BEVI_model_df, family = binomial)
+mod_precip1       <- glm(Haem_01 ~ precipPC1, data = BEVI_model_df, family = binomial)
+mod_temp2         <- glm(Haem_01 ~ tempPC2, data = BEVI_model_df, family = binomial)
+mod_precip2       <- glm(Haem_01 ~ precipPC2, data = BEVI_model_df, family = binomial)
+mod_elev          <- glm(Haem_01 ~ analysis_elev, data = BEVI_model_df, family = binomial)
+
+# Multivariate models
+mod_temp1_precip1 <- glm(Haem_01 ~ tempPC1 + precipPC1, data = BEVI_model_df, family = binomial)
+mod_temp1_precip2 <- glm(Haem_01 ~ tempPC1 + precipPC2, data = BEVI_model_df, family = binomial)
+mod_temp1_elev    <- glm(Haem_01 ~ tempPC1 + analysis_elev, data = BEVI_model_df, family = binomial)
+
+mod_temp2_precip1 <- glm(Haem_01 ~ tempPC2 + precipPC1, data = BEVI_model_df, family = binomial)
+mod_temp2_precip2 <- glm(Haem_01 ~ tempPC2 + precipPC2, data = BEVI_model_df, family = binomial)
+mod_temp2_elev    <- glm(Haem_01 ~ tempPC2 + analysis_elev, data = BEVI_model_df, family = binomial)
+
+mod_precip1_elev  <- glm(Haem_01 ~ precipPC1 + analysis_elev, data = BEVI_model_df, family = binomial)
+mod_precip2_elev  <- glm(Haem_01 ~ precipPC2 + analysis_elev, data = BEVI_model_df, family = binomial)
+
+# Global model
+full <- glm(Haem_01 ~ tempPC1 + tempPC2 + precipPC1 + precipPC2 + analysis_elev, data = BEVI_model_df, family = binomial)
+
+# Calculate AICc
+aicc_values <- sapply(list
+                      (mod_null                     #1
+                           , mod_temp1              #2 ****
+                           , mod_precip1            #3 ***
+                           , mod_temp2              #4
+                           , mod_precip2            #5
+                           , mod_elev               #6                          
+                           , mod_temp1_precip1      #7 **
+                           , mod_temp1_precip2      #8
+                           , mod_temp2_precip1      #9 *****
+                           , mod_temp2_precip2      #10
+                           , mod_temp2_elev         #11
+                           , mod_temp1_elev         #12  *
+                           , mod_precip1_elev       #13
+                           , mod_precip2_elev       #14
+                           , full                   #15
+                           ), AICc)
+
+# Compare
+tibble(aicc_values)
+#    aicc_values
+#          <dbl>
+#  1        29.7
+#  2        23.6 ****
+#  3        24.7 ***
+#  4        29.9
+#  5        31.1
+#  6        28.5
+#  7        25.9 **
+#  8        26.3
+#  9        22.6 ***** 
+# 10        27.6
+# 11        29.6
+# 12        25.9 *
+# 13        26.5
+# 14        30.4
+# 15        26.3
+
+# Null model is best
+
+# Create a supplemental table with model outputs
+library(AICcmodavg)
+library(broom)
+
+# Named list of models
+model_list <- list(
+  null = mod_null,
+  tempPC1 = mod_temp1,
+  precipPC1 = mod_precip1,
+  tempPC2 = mod_temp2,
+  precipPC2 = mod_precip2,
+  elev = mod_elev,
+  temp1_precip1 = mod_temp1_precip1,
+  temp1_precip2 = mod_temp1_precip2,
+  temp2_precip1 = mod_temp2_precip1,
+  temp2_precip2 = mod_temp2_precip2,
+  temp1_elev = mod_temp1_elev,
+  temp2_elev = mod_temp2_elev,
+  precip1_elev = mod_precip1_elev,
+  precip2_elev = mod_precip2_elev,
+  full = full
+)
+
+# Get AICc values and ΔAICc, weights
+aic_table <- aictab(cand.set = model_list, modnames = names(model_list), sort = FALSE)
+# View
+print(aic_table)
+#write.csv(aic_table, "Fixed_effects_models_prevalence_output_BEVI.csv")
+```
+
+## Top model assessment
+```{r}
+# Best model
+summary(mod_temp2_precip1)
+# Call:
+# glm(formula = Haem_01 ~ tempPC2 + precipPC1, family = binomial, 
+#     data = BEVI_model_df)
+# 
+# Coefficients:
+#             Estimate Std. Error z value Pr(>|z|)  
+# (Intercept)    9.370      4.733   1.980   0.0477 *
+# tempPC2        4.169      2.378   1.753   0.0796 .
+# precipPC1      3.770      1.875   2.011   0.0443 *
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for binomial family taken to be 1)
+# 
+#     Null deviance: 27.526  on 19  degrees of freedom
+# Residual deviance: 15.136  on 17  degrees of freedom
+# AIC: 21.136
+# 
+# Number of Fisher Scoring iterations: 6
+
+library(tidyverse)
+library(broom)
+theme_set(theme_classic())
+
+# Predict the probability (p) of infection positive
+probabilities <- predict(mod_temp2_precip1, type = "response")
+predicted.classes <- ifelse(probabilities > 0.5, "pos", "neg")
+head(predicted.classes)
+
+# Linearity
+BEVI_top_model_df <-subset(BEVI_model_df, select = c(
+                                  "tempPC2",
+                                  "precipPC1"
+                                  ))
+
+# Bind the logit and tidying the data for plot
+mydata <- BEVI_top_model_df %>%
+  mutate(logit = log(probabilities/(1-probabilities))) %>%
+  gather(key = "predictors", value = "predictor.value", -logit)
+
+ggplot(mydata, aes(logit, predictor.value))+
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "loess") + 
+  theme_bw() + 
+  facet_wrap(~predictors, scales = "free_y")
+# Not linear due to small sample size.
+
+# Influential points
+plot(mod_temp2_precip1, which = 4, id.n = 3)
+#Small sample size inflate importance of points.
+
+# Extract model results
+model.data <- augment(mod_temp2_precip1) %>% 
+  mutate(index = 1:n()) 
+
+#Look at top 3 potential outlier points
+model.data %>% top_n(3, .cooksd)
+
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = Haem_01, alpha = .5)) + theme_bw()
+
+```
+
+## Model Summary and Goodness of Fit
+```{r}
+cv_data <- na.omit(BEVI_model_df[, c("Haem_01", "tempPC2", "precipPC1")])
+
+BEVI_final_model <- glm(Haem_01 ~ tempPC2 + precipPC1
+                        , data = BEVI_model_df
+                        , family = binomial)
+
+# Model summary
+summary(BEVI_final_model)
+
+# Check linearity of logit
+cv_data$Haem_01 <- as.numeric(as.character(cv_data$Haem_01))
+str(cv_data$Haem_01)
+
+hoslem.test(cv_data$Haem_01, fitted(BEVI_final_model))
+# 	Hosmer and Lemeshow goodness of fit (GOF) test
+# 
+# data:  cv_data$Haem_01, fitted(BEVI_final_model)
+# X-squared = 11.536, df = 7, p-value = 0.1169
+#   p = 0.1169, Not significant, No evidence that the model is a poor fit.
+
+# Check for overdispersion
+overdisp_fun <- function(model) {
+  rdf <- df.residual(model)
+  rp <- residuals(model, type = "pearson")
+  Pearson.chisq <- sum(rp^2)
+  prat <- Pearson.chisq / rdf
+  pval <- pchisq(Pearson.chisq, df = rdf, lower.tail = FALSE)
+  c(chisq = Pearson.chisq, ratio = prat, rdf = rdf, p = pval)
+}
+overdisp_fun(BEVI_final_model)
+#      chisq      ratio        rdf          p 
+# 15.7864031  0.9286119 17.0000000  0.5390244
+# Ratio ~1 means no overdispersion.
+
+# Diagnostics
+library(separationplot) # visual diagnostic of binary model fit https://onlinelibrary.wiley.com/doi/epdf/10.1111/j.1540-5907.2011.00525.x
+separationplot::separationplot(pred=BEVI_final_model$fitted.values, actual=BEVI_final_model$y, type="rect", line="TRUE", show.expected=TRUE,heading="Separation plot for full model")
+# We can see the limitation of our data points from this plot very clearly
+```
+
+## Root Mean Squared Error (RMSE)
+```{r}
+# Compute RMSE manually
+rmse <- sqrt(mean(residuals(BEVI_final_model)^2))
+cat("RMSE:", rmse)
+# RMSE: 0.8699398
 ```
 
 ## Visualization
 
 ```{r}
-# Box Plot: ALL infected/uninfected 
-#Prep work:
-Hp_c <- c("#C5D8CF", "#4F6D5A") #creates color palette for plot
-#df_p_hp$Haem_01 <- forcats::fct_relevel(df_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
+library(ggeffects)
+preds <- ggpredict(BEVI_final_model, terms = c("tempPC2", "precipPC1"))
+plot(preds)
+# Very concerning large standard errors
+```
 
-#Plot:
-# Create a proportion bar chart
-Hp_PPC2_bar <- ggplot(df_p_hp, 
-                     aes(x = as.factor(precipPC2), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Hp_c) + # Apply custom colors
-  labs(x = "PPC2",y = "Proportion", fill = "Infection Status",
-    title = "Proportion of infected vs. uninfected vireos by PPC2") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") +
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "p = ", signif(HpPPC2_wilcox.prev.p, 2), 
-                  " r =", signif(HpPPC2_effsize.s, 2)), 
-                hjust = 1.1, vjust = 1.1, size = 4.5, color = "black", fontface = "italic")  # Add p-value annotation
-plot(Hp_PPC2_bar)
-#ggsave(Hp_PPC2_bar, filename="FigS1_AllSpp_Barplots_PPC2_20241223.pdf", bg="transparent", height=4.5, width=6, units="in")
-#------------------------------------------------
-#BEVI
-#Prep work:
-Bell_c <- c("#F9F0CA", "#F3DA44") #creates color palette for plot
-#library(forcats)
-#Bells_p_hp$Haem_01 <- forcats::fct_relevel(Bells_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
+## 10-Fold Cross Validation
 
-#Plot:
-# Create a proportion bar chart
-Bells_PPC2_bar <- ggplot(Bells_p_hp, 
-                     aes(x = as.factor(precipPC2), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Bell_c) + # Apply custom colors
-  labs(y = "Proportion") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  #theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Bell's p = ", signif(BellsPPC2_pearson.p, 2), 
-                  " r =", signif(BellsPPC2_effectsize.s, 2)), 
-                hjust = 1.1, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") #+ # Add p-value & effect size annotation
-#   easy_remove_axes(
-#   which = "y",
-#   teach = FALSE
-# )
-Bells_PPC2_bar
+```{r}
+library(caret)
+# Set up 10-fold CV
+set.seed(123)
+train_control <- trainControl(method = "cv", number = 10)
+cv_data$Haem_01 <- as.factor(cv_data$Haem_01)
+# Train the model using caret
+model_cv <- train(Haem_01 ~ tempPC2 + precipPC1,
+                  data = cv_data,
+                  method = "glm",
+                  family = binomial,
+                  trControl = train_control)
 
-#----------------------------------------------------------
-#GRVI
-#Prep work:
-Gray_c <-c("#D8D8D6", "#A0A0A0") #creates color palette for plot
-#Gray_p_hp$Haem_01 <- forcats::fct_relevel(Gray_p_hp$Haem_01, "1","0") #flips x-axis factor levels so infected points are plotted first
-Gray_p_hp$precipPC2 <- as.integer(as.character(Gray_p_hp$precipPC2)) #change precipPC2 back into continuous variable instead of factor which was used in the chi-squared comparison above.
+# View cross-validated RMSE
+model_cv$results
+#   parameter Accuracy     Kappa AccuracySD   KappaSD
+# 1      none     0.75 0.4444444  0.3535534 0.7264832
+```
 
-#Plot: 
-# Create a proportion bar chart
-Gray_PPC2_bar <- ggplot(Gray_p_hp, 
-                     aes(x = as.factor(precipPC2), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Gray_c) + # Apply custom colors
-  #labs(x = "PPC2 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Gray vireos by PPC2") +
-  theme_minimal() +
-  #theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-  #      plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Gray p = ", signif(GrayPPC2_pearson.p, 2), 
-                  " r =", signif(GrayPPC2_effectsize.s, 2)), 
-                hjust = 1.4, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") + # Add p-value & effect size annotation
-easy_remove_axes(
-  which = "y",
-  teach = FALSE
-)
-Gray_PPC2_bar
+# -----------------------------------------------
 
-#----------------------------------------------------------
-#PLVI
-#Prep work:
-Plum_c <-c("#D7EDF9", "#89B8EB")#creates color palette for plot
-#Plum_p_hp1$Haem_01 <- forcats::fct_relevel(Plum_p_hp1$Haem_01, "1","0")  #flips x-axis factor levels so infected points are plotted first
+# GRVI Model Selection (Infection probability ~ elevation + tempPC1 1 is best)
+```{r}
+GRVI_df <- subset(df, df$common_name == "gray vireo") #170
 
-#Plot:
-# Create a proportion bar chart (without Embudo outlier point)
-Plum_PPC2_bar <- ggplot(Plum_p_hp1, 
-                     aes(x = as.factor(precipPC2), fill = Haem_01)) +
-  geom_bar(position = "fill", color='black',width=0.9) +  # Use "fill" to make bars proportional
-  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
-  scale_fill_manual(values = Plum_c) + # Apply custom colors
-  #labs(x = "PPC2 (degrees)",y = "Proportion", fill = "Infection Status",
-  #  title = "Proportion of infected vs. uninfected Plumbeous vireos by PPC2") +
-  theme_minimal() +
-  theme(plot.title.position = "plot", # parameter "plot" makes "title" flush with y-axis
-        plot.title = element_text(face="bold")) + 
-  theme(legend.position = "blank") + # use: legend.position = "bottom", legend.box = "horizontal" in   single plots
-  theme(axis.text.y=element_text(size=14), axis.text.x=element_text(size=14), 
-  axis.title.x = element_blank(), axis.title=element_text(size=16)) + # This makes panel header bold 
-  # theme(axis.text.x = element_text(angle = 45, hjust = 1)  # Adjust x-axis text for readability
-  # ) + 
-  annotate("text", x = Inf, y = Inf, 
-                label = paste0(
-                  "Plumbeous p = ", signif(PlumPPC2_wilcox.prev1.p, 2), 
-                  " r =", signif(PlumPPC2_effsize1.s, 2)), 
-                hjust = 1.05, vjust = 1.2, size = 3.0, color = "black", fontface = "italic") +
-  easy_remove_axes(
-  which = "y",
-  teach = FALSE
-)# Add p-value annotation
-Plum_PPC2_bar
+#Standard linear regression with parasitemia as our response and environmental variables as our predictors.
+GRVI_model_df <- subset(GRVI_df, select = c("Haem_01",
+                                  "common_name",
+                                  "rowID",
+                                  "analysis_lat",
+                                  "analysis_elev",
+                                  "tempPC1",
+                                  "tempPC2",
+                                  "precipPC1",
+                                  "precipPC2"
+                                  ))
 
-# PLOT ALL PANELS TOGETHER 
-library(patchwork)
-# Alternative layout option = BETTER, USE THIS ONE:
-combined_plot <- ((Hp_PPC2_bar) / 
-                   (Bells_PPC2_bar + 
-                   Gray_PPC2_bar + 
-                   Plum_PPC2_bar)) + 
-  plot_annotation(theme = theme_minimal())
-combined_plot <- combined_plot + theme(aspect.ratio = 1) 
-plot(combined_plot)
- ggsave(combined_plot, filename="FigS6.pdf", bg="transparent", height=10, width=10, units="in")
+GRVI_model_df$Haem_01 <- as.numeric(as.character(GRVI_df$Haem_01))
+
+# Fit the full model
+GRVI_prev.full.fixed <- glm(Haem_01 ~ 
+               analysis_lat + 
+               analysis_elev + 
+               tempPC1 + 
+               tempPC2 + 
+               precipPC1 + 
+               precipPC2
+             , data = GRVI_model_df
+             , family = binomial
+             , na.action=na.fail
+             ) 
+
+summary(GRVI_prev.full.fixed)
+# Call:
+# glm(formula = Haem_01 ~ analysis_lat + analysis_elev + tempPC1 + 
+#     tempPC2 + precipPC1 + precipPC2, family = binomial, data = GRVI_model_df, 
+#     na.action = na.fail)
+# 
+# Coefficients:
+#                 Estimate Std. Error z value Pr(>|z|)  
+# (Intercept)   -485.97311  526.73342  -0.923   0.3562  
+# analysis_lat    15.08627   15.32089   0.985   0.3248  
+# analysis_elev   -0.01818    0.01034  -1.759   0.0786 .
+# tempPC1          0.81721    4.00724   0.204   0.8384  
+# tempPC2         -0.74803    2.79922  -0.267   0.7893  
+# precipPC1       -0.49059    1.32370  -0.371   0.7109  
+# precipPC2       -3.51603    2.44698  -1.437   0.1508  
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for binomial family taken to be 1)
+# 
+#     Null deviance: 214.03  on 169  degrees of freedom
+# Residual deviance: 195.24  on 163  degrees of freedom
+# AIC: 209.24
+# 
+# Number of Fisher Scoring iterations: 10
+```
+
+## Evaluating multicollienarity
+
+```{r}
+# Check multicollinearity
+vif(GRVI_prev.full.fixed)
+ # analysis_lat analysis_elev       tempPC1       tempPC2     precipPC1     precipPC2 
+ #    21.677795      9.294904     91.694729     29.199854     22.605808      4.117388 
+
+cor(GRVI_model_df[, c("analysis_elev"
+                 , "analysis_lat"
+                 , "tempPC1"
+                 , "tempPC2"
+                 , "precipPC1"
+                 , "precipPC2"
+                 )], use = "complete.obs")
+
+#               analysis_elev analysis_lat      tempPC1    tempPC2  precipPC1  precipPC2
+# analysis_elev   1.000000000   -0.8259554 -0.001375091 -0.9046086  0.9393897 -0.8514449
+# analysis_lat   -0.825955392    1.0000000  0.515956393  0.9795608 -0.7061630  0.9969029
+# tempPC1        -0.001375091    0.5159564  1.000000000  0.3423342  0.2173012  0.4747161
+# tempPC2        -0.904608644    0.9795608  0.342334241  1.0000000 -0.8138195  0.9862514
+# precipPC1       0.939389661   -0.7061630  0.217301164 -0.8138195  1.0000000 -0.7366872
+# precipPC2      -0.851444896    0.9969029  0.474716114  0.9862514 -0.7366872  1.0000000
+
+# Look at distributions
+p <- ggpairs(GRVI_prev.full.fixed,
+       # mapping = aes(color = common_name),
+        upper = list(continuous = wrap("cor", size = 3)),
+        lower = list(continuous = wrap("smooth", alpha = 0.5, size = 0.3)),
+        diag = list(continuous = wrap("densityDiag", alpha = 0.4))) +
+  theme_bw()
+#print(p)
+```
+
+We don't need latitude in this case, as it is a 1:1 for precipPC2 which is more insightful ecologically. Additionally, elevation in this group is captured by precipPC1 at almost a 1:1, but there are certain aspects of elevation that are physiologically important outside of elevations affect on temperature and precipitation, so we'll keep both.
+
+```{r}
+GRVI_model_df <- subset(GRVI_df, select = c("Haem_01",
+                                  "rowID",
+                                #  "analysis_lat",
+                                  "analysis_elev",
+                                  "tempPC1",
+                                  "tempPC2",
+                                  "precipPC1",
+                                  "precipPC2"
+                                  ))
+
+
+# Fit model #1 (without latitude)
+GRVI_prev.full.fixed <- glm(Haem_01 ~ 
+              # analysis_lat + 
+               analysis_elev + 
+               tempPC1 + 
+               tempPC2 + 
+               precipPC1 + 
+               precipPC2
+             , data = GRVI_model_df
+             , family = binomial
+             , na.action=na.fail
+             ) 
+
+summary(GRVI_prev.full.fixed)
+# Call:
+# glm(formula = Haem_01 ~ analysis_elev + tempPC1 + tempPC2 + precipPC1 + 
+#     precipPC2, family = binomial, data = GRVI_model_df, na.action = na.fail)
+# 
+# Coefficients:
+#                Estimate Std. Error z value Pr(>|z|)  
+# (Intercept)   32.923694  16.819495   1.957   0.0503 .
+# analysis_elev -0.016446   0.009398  -1.750   0.0801 .
+# tempPC1        4.138417   2.233552   1.853   0.0639 .
+# tempPC2        1.118069   1.672734   0.668   0.5039  
+# precipPC1     -0.977112   1.143681  -0.854   0.3929  
+# precipPC2     -1.815451   1.813186  -1.001   0.3167  
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for binomial family taken to be 1)
+# 
+#     Null deviance: 214.03  on 169  degrees of freedom
+# Residual deviance: 196.43  on 164  degrees of freedom
+# AIC: 208.43
+# 
+# Number of Fisher Scoring iterations: 8
+```
+
+## Model selection for global additive only model
+
+```{r}
+# Run model dredging
+options(na.action = "na.fail")  # Required by dredge
+GRVI_dredge_results.fixed <- dredge(GRVI_prev.full.fixed, rank = "AICc", trace = TRUE)
+# View top models
+head(GRVI_dredge_results.fixed)
+# Show top 5 models in dredge results
+GRVI_top5.fixed <- head(GRVI_dredge_results.fixed, 5)
+# Print basic table
+print(GRVI_top5.fixed)
+# Global model call: glm(formula = Haem_01 ~ analysis_elev + tempPC1 + tempPC2 + precipPC1 + 
+#     precipPC2, family = binomial, data = GRVI_model_df, na.action = na.fail)
+# ---
+# Model selection table 
+#    (Int)  anl_elv    pPC1    pPC2  tPC1    tPC2 df  logLik  AICc delta weight
+# 10 33.65 -0.01733                 2.022          3 -98.890 203.9  0.00  0.419
+# 12 30.12 -0.01522 -0.6223         2.719          4 -98.703 205.6  1.72  0.177
+# 14 38.79 -0.02023         -0.6445 2.339          4 -98.706 205.7  1.73  0.177
+# 26 34.60 -0.01794                 1.967 -0.1747  4 -98.876 206.0  2.07  0.149
+# 16 35.04 -0.01805 -0.6918 -0.8616 3.123          5 -98.455 207.3  3.35  0.078
+# Models ranked by AICc(x) 
+GRVI_best_model.fixed <- get.models(GRVI_dredge_results.fixed, 1)[[1]]
+summary(GRVI_best_model.fixed)
+# Call:
+# glm(formula = Haem_01 ~ analysis_elev + tempPC1 + 1, family = binomial, 
+#     data = GRVI_model_df, na.action = na.fail)
+# 
+# Coefficients:
+#                Estimate Std. Error z value Pr(>|z|)  
+# (Intercept)   33.645678  13.138607   2.561   0.0104 *
+# analysis_elev -0.017329   0.006911  -2.508   0.0122 *
+# tempPC1        2.022396   0.864953   2.338   0.0194 *
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for binomial family taken to be 1)
+# 
+#     Null deviance: 214.03  on 169  degrees of freedom
+# Residual deviance: 197.78  on 167  degrees of freedom
+# AIC: 203.78
+# 
+# Number of Fisher Scoring iterations: 6
+```
+
+Haem_01 ~ analysis_elev + tempPC1
+
+This model suggests that probability of infection increases with lower elevations and cooler temperatures. This, however seems somewhat suspicious since the 11 Utah samples fit this category. Let's attempt model selection without those samples just to be sure.
+
+## Utah check
+```{r}
+GRVI_df_noUT <- subset(GRVI_df, GRVI_df$state != "Utah") #159
+
+#Standard linear regression with parasitemia as our response and environmental variables as our predictors.
+GRVI_model_df_noUT <- subset(GRVI_df_noUT, select = c("Haem_01",
+                                  "analysis_elev",
+                                  "tempPC1",
+                                  "tempPC2",
+                                  "precipPC1",
+                                  "precipPC2"
+                                  ))
+
+GRVI_model_df_noUT$Haem_01 <- as.numeric(as.character(GRVI_model_df_noUT$Haem_01))
+
+# Fit the full model
+GRVI_prev.full.fixed_noUT <- glm(Haem_01 ~ 
+               analysis_elev + 
+               tempPC1 + 
+               tempPC2 + 
+               precipPC1 + 
+               precipPC2
+             , data = GRVI_model_df_noUT
+             , family = binomial
+             , na.action=na.fail
+             ) 
+
+summary(GRVI_prev.full.fixed_noUT)
+# Call:
+# glm(formula = Haem_01 ~ analysis_elev + tempPC1 + tempPC2 + precipPC1 + 
+#     precipPC2, family = binomial, data = GRVI_model_df_noUT, 
+#     na.action = na.fail)
+# 
+# Coefficients:
+#                Estimate Std. Error z value Pr(>|z|)  
+# (Intercept)   32.953219  16.868794   1.954   0.0508 .
+# analysis_elev -0.016467   0.009442  -1.744   0.0812 .
+# tempPC1        4.130015   2.260306   1.827   0.0677 .
+# tempPC2        1.110975   1.698700   0.654   0.5131  
+# precipPC1     -0.973286   1.154342  -0.843   0.3991  
+# precipPC2     -1.815558   1.813111  -1.001   0.3167  
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for binomial family taken to be 1)
+# 
+#     Null deviance: 205.07  on 158  degrees of freedom
+# Residual deviance: 196.42  on 153  degrees of freedom
+# AIC: 208.42
+# 
+# Number of Fisher Scoring iterations: 4
+
+# Run model dredging
+options(na.action = "na.fail")  # Required by dredge
+GRVI_dredge_results.fixed_noUT <- dredge(GRVI_prev.full.fixed_noUT, rank = "AICc", trace = TRUE)
+# View top models
+head(GRVI_dredge_results.fixed_noUT)
+# Show top 5 models in dredge results
+GRVI_top5.fixed_noUT <- head(GRVI_dredge_results.fixed_noUT, 5)
+# Print basic table
+print(GRVI_top5.fixed_noUT)
+# Global model call: glm(formula = Haem_01 ~ analysis_elev + tempPC1 + tempPC2 + precipPC1 + 
+#     precipPC2, family = binomial, data = GRVI_model_df_noUT, 
+#     na.action = na.fail)
+# ---
+# Model selection table 
+#      (Int)  anl_elv    pPC1   pPC2  tPC1    tPC2 df   logLik  AICc delta weight
+# 10 33.5400 -0.01727                2.016          3  -98.887 203.9  0.00  0.410
+# 14 39.2500 -0.02059         -1.024 2.366          4  -98.619 205.5  1.57  0.187
+# 12 30.1100 -0.01521 -0.6208        2.716          4  -98.703 205.7  1.74  0.172
+# 26 34.6200 -0.01800                1.911 -0.2628  4  -98.865 206.0  2.06  0.146
+# 1   0.6371                                        1 -102.536 207.1  3.17  0.084
+# Models ranked by AICc(x) 
+GRVI_best_model.fixed_noUT <- get.models(GRVI_dredge_results.fixed_noUT, 1)[[1]]
+summary(GRVI_best_model.fixed_noUT)
+# Call:
+# glm(formula = Haem_01 ~ analysis_elev + tempPC1 + 1, family = binomial, 
+#     data = GRVI_model_df_noUT, na.action = na.fail)
+# 
+# Coefficients:
+#                Estimate Std. Error z value Pr(>|z|)  
+# (Intercept)   33.535067  13.294760   2.522   0.0117 *
+# analysis_elev -0.017271   0.006992  -2.470   0.0135 *
+# tempPC1        2.015581   0.873893   2.306   0.0211 *
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for binomial family taken to be 1)
+# 
+#     Null deviance: 205.07  on 158  degrees of freedom
+# Residual deviance: 197.77  on 156  degrees of freedom
+# AIC: 203.77
+# 
+# Number of Fisher Scoring iterations: 4
+```
+
+Removing the Utah samples did not diminish the environmental association with infection probability enough to change the best model.
+
+```{r}
+# Make table of top five models
+top5.tibble <- as_tibble(GRVI_top5.fixed)
+# write.table(top5.tibble, file = "Top_five_fixed_effects_models_prevalence_output_GRVI.csv", sep = ",", row.names = FALSE)
+```
+
+## Top model assessment
+
+```{r}
+# Best model
+summary(GRVI_best_model.fixed)
+# Call:
+# glm(formula = Haem_01 ~ analysis_elev + tempPC1 + 1, family = binomial, 
+#     data = GRVI_model_df, na.action = na.fail)
+# 
+# Coefficients:
+#                Estimate Std. Error z value Pr(>|z|)  
+# (Intercept)   33.645678  13.138607   2.561   0.0104 *
+# analysis_elev -0.017329   0.006911  -2.508   0.0122 *
+# tempPC1        2.022396   0.864953   2.338   0.0194 *
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for binomial family taken to be 1)
+# 
+#     Null deviance: 214.03  on 169  degrees of freedom
+# Residual deviance: 197.78  on 167  degrees of freedom
+# AIC: 203.78
+# 
+# Number of Fisher Scoring iterations: 6
+
+library(tidyverse)
+library(broom)
+theme_set(theme_classic())
+
+# Predict the probability (p) of infection positive
+probabilities <- predict(GRVI_best_model.fixed, type = "response")
+predicted.classes <- ifelse(probabilities > 0.5, "pos", "neg")
+head(predicted.classes)
+
+# Linearity
+GRVI_top_model_df <-subset(GRVI_model_df, select = c(
+                                  "analysis_elev",
+                                  "tempPC1"
+                                  ))
+
+# Bind the logit and tidying the data for plot
+mydata <- GRVI_top_model_df %>%
+  mutate(logit = log(probabilities/(1-probabilities))) %>%
+  gather(key = "predictors", value = "predictor.value", -logit)
+
+ggplot(mydata, aes(logit, predictor.value))+
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "loess") + 
+  theme_bw() + 
+  facet_wrap(~predictors, scales = "free_y")
+# Not strictly linear, but still useful.
+
+# Influential points
+plot(GRVI_best_model.fixed, which = 4, id.n = 3)
+# Point 218 is extremely influential with an elevation of 1821 and tempPC1 of -1.82620980 (much lower in comparison). 
+
+# Extract model results
+model.data <- augment(GRVI_best_model.fixed) %>% 
+  mutate(index = 1:n()) 
+
+#Look at top 3 potential outlier points
+model.data %>% top_n(3, .cooksd)
+
+# Plot standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = Haem_01, alpha = .5)) + theme_bw()
+
+```
+
+##  Model Summary & Goodness of Fit
+
+```{r}
+cv_data <- na.omit(GRVI_model_df[, c("Haem_01", "analysis_elev", "tempPC1")])
+
+GRVI_final_model <- glm(Haem_01 ~ analysis_elev + tempPC1
+                        , family = binomial
+                        , data = cv_data)
+# Model summary
+summary(GRVI_final_model)
+# Check linearity of logit
+cv_data$Haem_01 <- as.numeric(as.character(cv_data$Haem_01))
+hoslem.test(cv_data$Haem_01, fitted(GRVI_final_model))
+# 	Hosmer and Lemeshow goodness of fit (GOF) test
+# 
+# data:  cv_data$Haem_01, fitted(GRVI_final_model)
+# X-squared = 13.302, df = 8, p-value = 0.1019
+#   p = 0.1019, Not significant, No evidence that the model is a poor fit.
+
+# Check for overdispersion
+overdisp_fun <- function(model) {
+  rdf <- df.residual(model)
+  rp <- residuals(model, type = "pearson")
+  Pearson.chisq <- sum(rp^2)
+  prat <- Pearson.chisq / rdf
+  pval <- pchisq(Pearson.chisq, df = rdf, lower.tail = FALSE)
+  c(chisq = Pearson.chisq, ratio = prat, rdf = rdf, p = pval)
+}
+overdisp_fun(GRVI_final_model)
+#       chisq       ratio         rdf           p 
+# 156.9882048   0.9400491 167.0000000   0.6993367 
+# Ratio ~1 means no overdispersion. \
+
+# Diagnostics
+library(separationplot) # visual diagnostic of binary model fit https://onlinelibrary.wiley.com/doi/epdf/10.1111/j.1540-5907.2011.00525.x
+separationplot::separationplot(pred=GRVI_final_model$fitted.values, actual=GRVI_final_model$y, type="rect", line="TRUE", show.expected=TRUE,heading="Separation plot for full model")
+```
+
+## Root Mean Squared Error (RMSE)
+```{r}
+# Compute RMSE manually
+rmse <- sqrt(mean(residuals(GRVI_final_model)^2))
+cat("RMSE:", rmse)
+# RMSE: 1.078617
+```
+
+## Visualization
+
+```{r}
+library(ggeffects)
+preds <- ggpredict(GRVI_final_model, terms = c("analysis_elev", "tempPC1"))
+plot(preds)
+```
+
+## 10-Fold Cross Validation
+
+```{r}
+library(caret)
+# Set up 10-fold CV
+set.seed(123)
+train_control <- trainControl(method = "cv", number = 10)
+
+# Train the model using caret
+model_cv <- train(Haem_01 ~ analysis_elev + tempPC1,
+                  data = cv_data,
+                  method = "glm",
+                  family = binomial,
+                  trControl = train_control)
+
+# View cross-validated RMSE
+model_cv$results
+
+#   parameter  Accuracy     Kappa AccuracySD   KappaSD
+# 1      none 0.6474673 -0.031988 0.04794575 0.1096258
+```
+
+# -----------------------------------------------
+
+# PLVI  Model Selection (Null is best)
+```{r}
+PLVI_df <- subset(df, df$common_name == "plumbeous vireo") #58
+#Standard linear regression with parasitemia as our response and environmental variables as our predictors.
+PLVI_model_df <- subset(PLVI_df, select = c("Haem_01",
+                                 "analysis_elev",
+                                  "tempPC1",
+                                  "tempPC2",
+                                  "precipPC1",
+                                  "precipPC2"
+                                  ))
+
+PLVI_model_df$Haem_01 <- as.numeric(as.character(PLVI_df$Haem_01))
+PLVI_prev.full.fixed <- glm(Haem_01 ~ 
+                              analysis_elev
+                            + tempPC1
+                            + tempPC2
+                            + precipPC1
+                            + precipPC2
+                            , family = binomial
+                            , data = PLVI_model_df)
+summary(PLVI_prev.full.fixed)
+```
+## Evaluating Linear Model Assumptions
+
+-   Linearity - no further transformation needed past the natural log (1+x).
+-   Homoscedasticity - Some homoscedasticity where residuals are clustered tightly at mid-high values, and loosely at low.
+-   Normality of residuals - Acceptable (a bit of a tail on the lower end values).
+-   Influential observations - rowID 10 is somewhat influential, but not extreme.
+-   Multicollinearity - *We expect our variables to be strongly correlated, so we can ignore this for now.*
+
+```{r}
+# Check multicollinearity
+vif(PLVI_prev.full.fixed)
+# analysis_elev       tempPC1       tempPC2     precipPC1     precipPC2 
+#      1.880231      2.259503      5.351315      1.764328      5.668766 
+
+cor(PLVI_model_df[, c("analysis_elev"
+               #  , "analysis_lat"
+                 , "tempPC1"
+                 , "tempPC2"
+                 , "precipPC1"
+                 , "precipPC2"
+                 )], use = "complete.obs")
+
+#               analysis_elev     tempPC1     tempPC2  precipPC1  precipPC2
+# analysis_elev     1.0000000  0.46203709 -0.45538670  0.3036090 -0.3480156
+# tempPC1           0.4620371  1.00000000 -0.04061645  0.3867691  0.2461217
+# tempPC2          -0.4553867 -0.04061645  1.00000000 -0.1031188  0.8323912
+# precipPC1         0.3036090  0.38676911 -0.10311877  1.0000000  0.0338313
+# precipPC2        -0.3480156  0.24612166  0.83239118  0.0338313  1.0000000
+
+# Not as strongly collinear, though we still see elevation and temperature come out as high, as well as precipPC1 & precipPC2.
+
+# Look at distributions
+p <- ggpairs(PLVI_prev.full.fixed,
+        upper = list(continuous = wrap("cor", size = 3)),
+        lower = list(continuous = wrap("smooth", alpha = 0.5, size = 0.3)),
+        diag = list(continuous = wrap("densityDiag", alpha = 0.4))) +
+  theme_bw()
+#print(p)
+```
+
+## Model Selection for global additive only model
+
+```{r}
+# Run model dredging
+options(na.action = "na.fail")  # Required by dredge
+PLVI_dredge_results.fixed <- dredge(PLVI_prev.full.fixed, rank = "AICc", trace = TRUE)
+# View top models
+head(PLVI_dredge_results.fixed)
+# Show top 5 models in dredge results
+PLVI_top5.fixed <- head(PLVI_dredge_results.fixed, 5)
+# Print basic table
+print(PLVI_top5.fixed)
+# Global model call: glm(formula = Haem_01 ~ analysis_elev + tempPC1 + tempPC2 + precipPC1 + 
+#     precipPC2, family = binomial, data = PLVI_model_df)
+# ---
+# Model selection table 
+#     (Int)   pPC1   pPC2   tPC2 df  logLik AICc delta weight
+# 1  1.6950                       1 -25.031 52.1  0.00  0.301
+# 5  1.5820        0.2480         2 -24.163 52.5  0.41  0.246
+# 3  1.0160 0.2180                2 -24.541 53.3  1.17  0.168
+# 17 1.7570               0.1897  2 -24.603 53.4  1.29  0.158
+# 7  0.9395 0.2067 0.2489         3 -23.709 53.9  1.73  0.127
+# Models ranked by AICc(x) 
+
+PLVI_best_model.fixed <- get.models(PLVI_dredge_results.fixed, 1)[[1]]
+summary(PLVI_best_model.fixed)
+# Call:
+# glm(formula = Haem_01 ~ 1, family = binomial, data = PLVI_model_df)
+# 
+# Coefficients:
+#             Estimate Std. Error z value Pr(>|z|)    
+# (Intercept)   1.6946     0.3626   4.673 2.97e-06 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for binomial family taken to be 1)
+# 
+#     Null deviance: 50.063  on 57  degrees of freedom
+# Residual deviance: 50.063  on 57  degrees of freedom
+# AIC: 52.063
+# 
+# Number of Fisher Scoring iterations: 3
+#
+```
+
+Since null model is best, we don't need to go through model fit assessment.
+
+```{r}
+# Make table of top five models
+top5.tibble <- as_tibble(PLVI_top5.fixed)
+write.table(top5.tibble, file = "Top_five_fixed_effects_models_prevalence_output_PLVI.csv", sep = ",", row.names = FALSE)
 ```
