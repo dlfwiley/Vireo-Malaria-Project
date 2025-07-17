@@ -1,5 +1,5 @@
 # Vireo-Malaria-Project
-Title: Haemosporidian diversity dramatically differs among closely related, highly susceptible songbird species; Daniele L. F. Wiley, Jessie L. Williamson, Silas E. Fischer, Selina M. Bauernfeind, Henry Streby, Christopher C. Witt, and Lisa N. Barrow; project data and code.
+Title: Haemosporidian diversity dramatically differs among closely related, highly susceptible songbird species; Daniele L. F. Wiley, Jessie L. Williamson, Silas E. Fischer, Selina M. Bauernfeind, Henry Streby, Kathy Granillo, Christopher C. Witt, and Lisa N. Barrow; project data and code.
 
 Wiley et al., 2025 (in prep) Haemosporidian diversity dramatically differs among closely related, highly susceptible songbird species.
 
